@@ -1,0 +1,624 @@
+# ElliePHP HttpClient
+
+A simple, Laravel-inspired HTTP client abstraction built on top of Symfony HttpClient. This library provides a fluent, developer-friendly interface for making HTTP requests in PHP applications.
+
+## Features
+
+- 🚀 **Simple & Intuitive API** - Fluent interface for building requests
+- 🔄 **Static & Instance Methods** - Use whichever style fits your needs
+- 🔐 **Built-in Authentication** - Bearer tokens and Basic auth support
+- 📦 **JSON Handling** - Automatic encoding/decoding with convenience methods
+- ⚡ **Retry Logic** - Configurable retry strategies with exponential backoff
+- ⏱️ **Timeout Control** - Set request timeouts easily
+- 🛡️ **Error Handling** - Graceful error handling with custom exceptions
+- 🎯 **Response Helpers** - Convenient methods for checking status and accessing data
+
+## Installation
+
+Install via Composer:
+
+```bash
+composer require elliephp/httpclient
+```
+
+## Requirements
+
+- PHP 8.4 or higher
+- Symfony HttpClient component
+
+## Quick Start
+
+### Static Methods (Simple Usage)
+
+For quick, one-off requests, use static methods:
+
+```php
+use ElliePHP\Components\HttpClient\HttpClient;
+
+// GET request
+$response = HttpClient::get('https://api.example.com/users');
+
+// POST request
+$response = HttpClient::post('https://api.example.com/users', [
+    'name' => 'John Doe',
+    'email' => 'john@example.com'
+]);
+
+// Check response
+if ($response->successful()) {
+    $data = $response->json();
+    echo "User created: " . $data['name'];
+}
+```
+
+### Instance Methods (Configured Usage)
+
+For multiple requests with shared configuration, create an instance:
+
+```php
+$client = new HttpClient();
+
+$response = $client
+    ->withBaseUrl('https://api.example.com')
+    ->withToken('your-api-token')
+    ->acceptJson()
+    ->get('/users');
+```
+
+## Usage Examples
+
+### Making Requests
+
+#### GET Request
+
+```php
+// Simple GET
+$response = HttpClient::get('https://api.example.com/users');
+
+// GET with query parameters
+$response = HttpClient::get('https://api.example.com/users', [
+    'page' => 1,
+    'limit' => 10
+]);
+```
+
+#### POST Request
+
+```php
+// POST with form data
+$response = HttpClient::post('https://api.example.com/users', [
+    'name' => 'John Doe',
+    'email' => 'john@example.com'
+]);
+
+// POST with JSON
+$client = new HttpClient();
+$response = $client
+    ->asJson()
+    ->post('https://api.example.com/users', [
+        'name' => 'John Doe',
+        'email' => 'john@example.com'
+    ]);
+```
+
+#### PUT Request
+
+```php
+$response = HttpClient::put('https://api.example.com/users/123', [
+    'name' => 'Jane Doe'
+]);
+```
+
+#### PATCH Request
+
+```php
+$response = HttpClient::patch('https://api.example.com/users/123', [
+    'status' => 'active'
+]);
+```
+
+#### DELETE Request
+
+```php
+$response = HttpClient::delete('https://api.example.com/users/123');
+```
+
+### Authentication
+
+#### Bearer Token Authentication
+
+```php
+$client = new HttpClient();
+
+$response = $client
+    ->withToken('your-api-token')
+    ->get('https://api.example.com/protected-resource');
+```
+
+#### Basic Authentication
+
+```php
+$client = new HttpClient();
+
+$response = $client
+    ->withBasicAuth('username', 'password')
+    ->get('https://api.example.com/protected-resource');
+```
+
+### Working with JSON
+
+#### Sending JSON Requests
+
+```php
+$client = new HttpClient();
+
+// asJson() sets Content-Type header and encodes body as JSON
+$response = $client
+    ->asJson()
+    ->post('https://api.example.com/users', [
+        'name' => 'John Doe',
+        'email' => 'john@example.com',
+        'metadata' => [
+            'role' => 'admin',
+            'department' => 'IT'
+        ]
+    ]);
+```
+
+#### Receiving JSON Responses
+
+```php
+$response = HttpClient::get('https://api.example.com/users/123');
+
+// Get entire JSON response as array
+$data = $response->json();
+echo $data['name']; // John Doe
+
+// Get specific key from JSON
+$name = $response->json('name');
+echo $name; // John Doe
+
+// Handle invalid JSON gracefully
+$data = $response->json(); // Returns null if JSON is invalid
+```
+
+#### Accept JSON Header
+
+```php
+$client = new HttpClient();
+
+// Sets Accept: application/json header
+$response = $client
+    ->acceptJson()
+    ->get('https://api.example.com/users');
+```
+
+### Configuration Options
+
+#### Base URL
+
+```php
+$client = new HttpClient();
+
+// Set base URL for all requests
+$response = $client
+    ->withBaseUrl('https://api.example.com')
+    ->get('/users'); // Requests https://api.example.com/users
+
+// Absolute URLs override base URL
+$response = $client
+    ->withBaseUrl('https://api.example.com')
+    ->get('https://other-api.com/data'); // Requests https://other-api.com/data
+```
+
+#### Custom Headers
+
+```php
+$client = new HttpClient();
+
+// Add multiple headers
+$response = $client
+    ->withHeaders([
+        'X-API-Key' => 'secret-key',
+        'User-Agent' => 'MyApp/1.0',
+        'X-Custom-Header' => 'value'
+    ])
+    ->get('https://api.example.com/data');
+```
+
+#### Timeout
+
+```php
+$client = new HttpClient();
+
+// Set timeout in seconds
+$response = $client
+    ->withTimeout(30)
+    ->get('https://api.example.com/slow-endpoint');
+```
+
+### Retry Configuration
+
+Configure automatic retry behavior for failed requests:
+
+#### Exponential Backoff
+
+```php
+$client = new HttpClient();
+
+$response = $client
+    ->withRetry([
+        'max_retries' => 3,      // Retry up to 3 times
+        'delay' => 1000,         // Start with 1 second delay (milliseconds)
+        'multiplier' => 2,       // Double delay each time: 1s, 2s, 4s
+        'max_delay' => 10000,    // Cap delay at 10 seconds
+    ])
+    ->get('https://api.example.com/data');
+```
+
+#### Fixed Delay
+
+```php
+$response = $client
+    ->withRetry([
+        'max_retries' => 5,
+        'delay' => 2000,         // 2 second delay
+        'multiplier' => 1,       // Keep delay constant
+    ])
+    ->get('https://api.example.com/data');
+```
+
+#### Retry with Jitter
+
+Add randomness to prevent thundering herd:
+
+```php
+$response = $client
+    ->withRetry([
+        'max_retries' => 3,
+        'delay' => 1000,
+        'multiplier' => 2,
+        'jitter' => 0.1,         // Add ±10% random variation
+    ])
+    ->get('https://api.example.com/data');
+```
+
+#### Retry Specific Status Codes
+
+```php
+$response = $client
+    ->withRetry([
+        'max_retries' => 3,
+        'delay' => 1000,
+        'multiplier' => 2,
+        'http_codes' => [429, 500, 502, 503, 504], // Only retry these codes
+    ])
+    ->get('https://api.example.com/data');
+```
+
+### Advanced Configuration
+
+#### Symfony HttpClient Options
+
+Pass any Symfony HttpClient options directly:
+
+```php
+$client = new HttpClient();
+
+$response = $client
+    ->withOptions([
+        'max_redirects' => 5,
+        'timeout' => 30,
+        'verify_peer' => true,
+        'verify_host' => true,
+    ])
+    ->get('https://api.example.com/data');
+```
+
+For all available options, see the [Symfony HttpClient documentation](https://symfony.com/doc/current/http_client.html#configuration).
+
+### Response Handling
+
+#### Check Response Status
+
+```php
+$response = HttpClient::get('https://api.example.com/users');
+
+// Check if successful (2xx status)
+if ($response->successful()) {
+    echo "Request succeeded!";
+}
+
+// Check if failed (4xx or 5xx status)
+if ($response->failed()) {
+    echo "Request failed!";
+}
+
+// Get status code
+$status = $response->status(); // e.g., 200, 404, 500
+```
+
+#### Access Response Data
+
+```php
+$response = HttpClient::get('https://api.example.com/users');
+
+// Get raw body
+$body = $response->body();
+
+// Get JSON data
+$data = $response->json();
+
+// Get specific JSON key
+$name = $response->json('name');
+```
+
+#### Access Response Headers
+
+```php
+$response = HttpClient::get('https://api.example.com/users');
+
+// Get all headers
+$headers = $response->headers();
+
+// Get specific header
+$contentType = $response->header('Content-Type');
+$rateLimit = $response->header('X-RateLimit-Remaining');
+```
+
+### Error Handling
+
+The library throws `RequestException` for network errors and timeouts:
+
+```php
+use ElliePHP\Components\HttpClient\HttpClient;
+use ElliePHP\Components\HttpClient\RequestException;
+
+try {
+    $response = HttpClient::get('https://api.example.com/users');
+    
+    if ($response->successful()) {
+        $data = $response->json();
+        // Process data
+    } else {
+        // Handle 4xx/5xx responses
+        echo "HTTP Error: " . $response->status();
+    }
+} catch (RequestException $e) {
+    // Handle network errors, timeouts, etc.
+    echo "Request failed: " . $e->getMessage();
+    
+    // Access original exception if needed
+    $previous = $e->getPrevious();
+}
+```
+
+#### Exception Types
+
+- **Network Errors**: Connection failures, DNS resolution errors, SSL errors
+- **Timeout Errors**: Request exceeds configured timeout
+- **Transport Errors**: Other Symfony transport-level errors
+
+**Note**: 4xx and 5xx HTTP responses do NOT throw exceptions by default. Use `$response->successful()` or `$response->failed()` to check status.
+
+## Method Chaining
+
+All configuration methods return a `ClientBuilder` instance, allowing fluent method chaining:
+
+```php
+$client = new HttpClient();
+
+$response = $client
+    ->withBaseUrl('https://api.example.com')
+    ->withToken('your-api-token')
+    ->withTimeout(30)
+    ->withRetry([
+        'max_retries' => 3,
+        'delay' => 1000,
+        'multiplier' => 2,
+    ])
+    ->acceptJson()
+    ->asJson()
+    ->post('/users', [
+        'name' => 'John Doe',
+        'email' => 'john@example.com'
+    ]);
+```
+
+## Complete Examples
+
+### Example 1: Simple API Client
+
+```php
+use ElliePHP\Components\HttpClient\HttpClient;
+
+// Quick one-off requests
+$users = HttpClient::get('https://api.example.com/users')->json();
+
+foreach ($users as $user) {
+    echo $user['name'] . "\n";
+}
+```
+
+### Example 2: Configured API Client
+
+```php
+use ElliePHP\Components\HttpClient\HttpClient;
+use ElliePHP\Components\HttpClient\RequestException;
+
+class ApiClient
+{
+    private HttpClient $client;
+    
+    public function __construct(string $apiToken)
+    {
+        $this->client = new HttpClient();
+    }
+    
+    public function getUsers(int $page = 1): array
+    {
+        try {
+            $response = $this->client
+                ->withBaseUrl('https://api.example.com')
+                ->withToken($apiToken)
+                ->withTimeout(30)
+                ->acceptJson()
+                ->get('/users', ['page' => $page]);
+            
+            if ($response->successful()) {
+                return $response->json();
+            }
+            
+            throw new \Exception('Failed to fetch users: ' . $response->status());
+        } catch (RequestException $e) {
+            throw new \Exception('API request failed: ' . $e->getMessage(), 0, $e);
+        }
+    }
+    
+    public function createUser(array $userData): array
+    {
+        try {
+            $response = $this->client
+                ->withBaseUrl('https://api.example.com')
+                ->withToken($apiToken)
+                ->asJson()
+                ->post('/users', $userData);
+            
+            if ($response->successful()) {
+                return $response->json();
+            }
+            
+            throw new \Exception('Failed to create user: ' . $response->status());
+        } catch (RequestException $e) {
+            throw new \Exception('API request failed: ' . $e->getMessage(), 0, $e);
+        }
+    }
+}
+```
+
+### Example 3: Resilient API Client with Retries
+
+```php
+use ElliePHP\Components\HttpClient\HttpClient;
+
+$client = new HttpClient();
+
+// Configure for resilient API calls
+$response = $client
+    ->withBaseUrl('https://api.example.com')
+    ->withToken('your-api-token')
+    ->withTimeout(30)
+    ->withRetry([
+        'max_retries' => 3,
+        'delay' => 1000,
+        'multiplier' => 2,
+        'jitter' => 0.1,
+        'http_codes' => [429, 500, 502, 503, 504],
+    ])
+    ->acceptJson()
+    ->asJson()
+    ->post('/orders', [
+        'product_id' => 123,
+        'quantity' => 2,
+        'customer_id' => 456
+    ]);
+
+if ($response->successful()) {
+    $order = $response->json();
+    echo "Order created: " . $order['id'];
+} else {
+    echo "Order failed: " . $response->status();
+}
+```
+
+## API Reference
+
+### HttpClient
+
+#### Static Methods
+
+- `HttpClient::get(string $url, array $query = []): Response`
+- `HttpClient::post(string $url, array $data = []): Response`
+- `HttpClient::put(string $url, array $data = []): Response`
+- `HttpClient::patch(string $url, array $data = []): Response`
+- `HttpClient::delete(string $url): Response`
+
+#### Configuration Methods
+
+- `withBaseUrl(string $baseUrl): ClientBuilder`
+- `withHeaders(array $headers): ClientBuilder`
+- `withToken(string $token): ClientBuilder`
+- `withBasicAuth(string $username, string $password): ClientBuilder`
+- `acceptJson(): ClientBuilder`
+- `asJson(): ClientBuilder`
+- `withTimeout(int $seconds): ClientBuilder`
+- `withRetry(array $retryConfig): ClientBuilder`
+- `withOptions(array $options): ClientBuilder`
+
+#### Request Methods
+
+- `get(string $url, array $query = []): Response`
+- `post(string $url, array $data = []): Response`
+- `put(string $url, array $data = []): Response`
+- `patch(string $url, array $data = []): Response`
+- `delete(string $url): Response`
+
+### Response
+
+#### Status Methods
+
+- `status(): int` - Get HTTP status code
+- `successful(): bool` - Check if status is 2xx
+- `failed(): bool` - Check if status is 4xx or 5xx
+
+#### Content Methods
+
+- `body(): string` - Get raw response body
+- `json(?string $key = null): mixed` - Decode JSON response
+- `headers(): array` - Get all response headers
+- `header(string $name): ?string` - Get specific header
+
+### RequestException
+
+Custom exception thrown for network errors, timeouts, and transport failures.
+
+```php
+try {
+    $response = HttpClient::get('https://api.example.com/data');
+} catch (RequestException $e) {
+    echo $e->getMessage();      // Error message
+    echo $e->getCode();         // Error code
+    $previous = $e->getPrevious(); // Original exception
+}
+```
+
+## Testing
+
+Run the test suite:
+
+```bash
+composer test
+```
+
+Run tests with coverage:
+
+```bash
+composer test:coverage
+```
+
+## License
+
+This library is open-sourced software licensed under the [MIT license](LICENSE).
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/elliephp/httpclient/issues)
+- **Source**: [GitHub Repository](https://github.com/elliephp/httpclient)
+
+## Credits
+
+Built on top of [Symfony HttpClient](https://symfony.com/doc/current/http_client.html).
