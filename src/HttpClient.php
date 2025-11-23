@@ -853,6 +853,6 @@ class HttpClient
         
         // Prepend base URL
         $url = ltrim($url, '/');
-        return "{$this->baseUrl}/{$url}";
+        return "$this->baseUrl/$url";
     }
 }

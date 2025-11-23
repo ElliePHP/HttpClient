@@ -4,14 +4,14 @@ A simple, Laravel-inspired HTTP client abstraction built on top of Symfony HttpC
 
 ## Features
 
-- 🚀 **Simple & Intuitive API** - Fluent interface for building requests
-- 🔄 **Static & Instance Methods** - Use whichever style fits your needs
-- 🔐 **Built-in Authentication** - Bearer tokens and Basic auth support
-- 📦 **JSON Handling** - Automatic encoding/decoding with convenience methods
-- ⚡ **Retry Logic** - Configurable retry strategies with exponential backoff
-- ⏱️ **Timeout Control** - Set request timeouts easily
-- 🛡️ **Error Handling** - Graceful error handling with custom exceptions
-- 🎯 **Response Helpers** - Convenient methods for checking status and accessing data
+- Simple and intuitive API with fluent interface for building requests
+- Static and instance methods available, use whichever style fits your needs
+- Built-in authentication support for Bearer tokens and Basic auth
+- Automatic JSON encoding and decoding with convenience methods
+- Configurable retry strategies with exponential backoff
+- Easy timeout control for requests
+- Graceful error handling with custom exceptions
+- Convenient response helper methods for checking status and accessing data
 
 ## Installation
 
@@ -60,7 +60,7 @@ if ($response->successful()) {
 
 ### Static Methods (HttpClient)
 
-For quick, one-off requests, use static methods on `HttpClient`:
+For quick, one-off requests, use static methods on `HttpClient`. Note that static methods do not support configuration chaining. They expect full, absolute URLs.
 
 ```php
 use ElliePHP\Components\HttpClient\HttpClient;
@@ -83,16 +83,31 @@ if ($response->successful()) {
 
 ### Instance Methods (Configured Usage)
 
-For multiple requests with shared configuration, create an instance:
+For multiple requests with shared configuration, create an instance. When you use configuration methods like `withBaseUrl()`, `withToken()`, etc., they return a `ClientBuilder` instance that properly handles the configuration. The `ClientBuilder` has all the same request methods (get, post, put, patch, delete) and will use your configured settings.
 
 ```php
 $client = new HttpClient();
 
+// This returns a ClientBuilder with your configuration applied
 $response = $client
     ->withBaseUrl('https://api.example.com')
     ->withToken('your-api-token')
     ->acceptJson()
-    ->get('/users');
+    ->get('/users');  // The ClientBuilder's get() method uses the base URL
+```
+
+**Important:** If you call request methods directly on the `HttpClient` instance without any configuration chaining, you must provide full URLs because the configuration is not stored on the `HttpClient` instance itself:
+
+```php
+$client = new HttpClient();
+
+// This will NOT work as expected because get() is called directly on HttpClient
+// and HttpClient doesn't store the baseUrl configuration
+$client->withBaseUrl('https://api.example.com');
+$response = $client->get('/users');  // Error: /users is not a valid URL
+
+// This works because the configuration returns ClientBuilder which handles it properly
+$response = $client->withBaseUrl('https://api.example.com')->get('/users');
 ```
 
 ## Usage Examples
@@ -229,10 +244,7 @@ $response = Http::withBaseUrl('https://api.example.com')
 
 **Error Handling:**
 
-The `attach()` method will throw an `InvalidArgumentException` if:
-- The file path doesn't exist
-- The file is not readable
-- The provided value is not a file path or resource
+The `attach()` method will throw an `InvalidArgumentException` if the file path doesn't exist, the file is not readable, or the provided value is not a file path or resource.
 
 ```php
 use ElliePHP\Components\HttpClient\Http;
@@ -246,7 +258,7 @@ try {
 }
 ```
 
-**Note:** File uploads work with POST, PUT, and PATCH requests. When files are attached, the request is automatically sent as `multipart/form-data`, even if `asJson()` was called earlier.
+Note that file uploads work with POST, PUT, and PATCH requests. When files are attached, the request is automatically sent as `multipart/form-data`, even if `asJson()` was called earlier.
 
 ### Authentication
 
@@ -424,7 +436,7 @@ $response = Http::withTimeout(30)
 
 ### Retry Configuration
 
-Configure automatic retry behavior for failed requests:
+Configure automatic retry behavior for failed requests.
 
 #### Exponential Backoff
 
@@ -455,7 +467,7 @@ $response = Http::withRetry([
 
 #### Retry with Jitter
 
-Add randomness to prevent thundering herd:
+Add randomness to prevent thundering herd problems:
 
 ```php
 use ElliePHP\Components\HttpClient\Http;
@@ -507,7 +519,7 @@ For all available options, see the [Symfony HttpClient documentation](https://sy
 
 #### Check Response Status
 
-The Response class provides many convenience methods for checking HTTP status codes:
+The Response class provides many convenience methods for checking HTTP status codes.
 
 **General Status Checks:**
 
@@ -521,7 +533,7 @@ if ($response->successful()) {
     echo "Request succeeded!";
 }
 
-// Alias for successful() - shorter syntax
+// Alias for successful() with shorter syntax
 if ($response->success()) {
     $data = $response->json();
 }
@@ -697,11 +709,13 @@ try {
 
 #### Exception Types
 
-- **Network Errors**: Connection failures, DNS resolution errors, SSL errors
-- **Timeout Errors**: Request exceeds configured timeout
-- **Transport Errors**: Other Symfony transport-level errors
+The library handles these types of errors:
 
-**Note**: 4xx and 5xx HTTP responses do NOT throw exceptions by default. Use `$response->successful()` or `$response->failed()` to check status.
+- Network Errors: Connection failures, DNS resolution errors, SSL errors
+- Timeout Errors: Request exceeds configured timeout
+- Transport Errors: Other Symfony transport level errors
+
+Note that 4xx and 5xx HTTP responses do NOT throw exceptions by default. Use `$response->successful()` or `$response->failed()` to check status.
 
 ## Method Chaining
 
@@ -769,10 +783,12 @@ use ElliePHP\Components\HttpClient\RequestException;
 class ApiClient
 {
     private HttpClient $client;
+    private string $apiToken;
     
     public function __construct(string $apiToken)
     {
         $this->client = new HttpClient();
+        $this->apiToken = $apiToken;
     }
     
     public function getUsers(int $page = 1): array
@@ -780,7 +796,7 @@ class ApiClient
         try {
             $response = $this->client
                 ->withBaseUrl('https://api.example.com')
-                ->withToken($apiToken)
+                ->withToken($this->apiToken)
                 ->withUserAgent('MyApp/1.0')
                 ->withTimeout(30)
                 ->acceptJson()
@@ -801,7 +817,7 @@ class ApiClient
         try {
             $response = $this->client
                 ->withBaseUrl('https://api.example.com')
-                ->withToken($apiToken)
+                ->withToken($this->apiToken)
                 ->asJson()
                 ->post('/users', $userData);
             
@@ -931,6 +947,8 @@ Http::withToken('token')->get('/api/protected');
 
 #### Static Methods
 
+These methods are for quick, one-off requests without configuration. They expect full, absolute URLs.
+
 - `HttpClient::get(string $url, array $query = []): Response`
 - `HttpClient::post(string $url, array $data = []): Response`
 - `HttpClient::put(string $url, array $data = []): Response`
@@ -939,25 +957,29 @@ Http::withToken('token')->get('/api/protected');
 
 #### Configuration Methods
 
-- `withBaseUrl(string $baseUrl): ClientBuilder` - Set base URL for requests
-- `withHeaders(array $headers): ClientBuilder` - Add multiple headers
-- `withHeader(string $name, string $value): ClientBuilder` - Set a single header
-- `withUserAgent(string $userAgent): ClientBuilder` - Set User-Agent header
-- `withContentType(string $contentType): ClientBuilder` - Set Content-Type header
-- `withAccept(string $accept): ClientBuilder` - Set Accept header
-- `withToken(string $token): ClientBuilder` - Set Bearer token authentication
-- `withBasicAuth(string $username, string $password): ClientBuilder` - Set Basic authentication
-- `acceptJson(): ClientBuilder` - Set Accept: application/json header
-- `asJson(): ClientBuilder` - Set Content-Type: application/json and enable JSON encoding
-- `withTimeout(int $seconds): ClientBuilder` - Set request timeout
-- `withMaxRedirects(int $maxRedirects): ClientBuilder` - Set maximum redirects to follow
-- `withVerify(bool $verify = true): ClientBuilder` - Enable/disable SSL verification
-- `withProxy(string $proxyUrl): ClientBuilder` - Configure proxy settings
-- `withRetry(array $retryConfig): ClientBuilder` - Configure retry behavior
-- `withOptions(array $options): ClientBuilder` - Set Symfony HttpClient options
-- `attach(string $name, string|resource $file): ClientBuilder` - Attach a file to upload with the request
+These methods return a `ClientBuilder` instance for method chaining and properly handle configured requests.
 
-#### Request Methods
+- `withBaseUrl(string $baseUrl): ClientBuilder`
+- `withHeaders(array $headers): ClientBuilder`
+- `withHeader(string $name, string $value): ClientBuilder`
+- `withUserAgent(string $userAgent): ClientBuilder`
+- `withContentType(string $contentType): ClientBuilder`
+- `withAccept(string $accept): ClientBuilder`
+- `withToken(string $token): ClientBuilder`
+- `withBasicAuth(string $username, string $password): ClientBuilder`
+- `acceptJson(): ClientBuilder`
+- `asJson(): ClientBuilder`
+- `withTimeout(int $seconds): ClientBuilder`
+- `withMaxRedirects(int $maxRedirects): ClientBuilder`
+- `withVerify(bool $verify = true): ClientBuilder`
+- `withProxy(string $proxyUrl): ClientBuilder`
+- `withRetry(array $retryConfig): ClientBuilder`
+- `withOptions(array $options): ClientBuilder`
+- `attach(string $name, string|resource $file): ClientBuilder`
+
+#### Request Methods on Instance
+
+These methods work on the HttpClient instance but require full URLs when called directly without configuration chaining.
 
 - `get(string $url, array $query = []): Response`
 - `post(string $url, array $data = []): Response`
@@ -970,37 +992,37 @@ Http::withToken('token')->get('/api/protected');
 #### Status Methods
 
 **General Status Checks:**
-- `status(): int` - Get HTTP status code
-- `successful(): bool` - Check if status is 2xx
-- `success(): bool` - Alias for successful() - Check if status is 2xx
-- `failed(): bool` - Check if status is 4xx or 5xx
-- `isError(): bool` - Check if status is 4xx or 5xx (alias for failed())
-- `throw(): self` - Throw RequestException if response failed, returns self for chaining
-- `jsonOrFail(?string $key = null): mixed` - Get JSON response or throw if failed
+- `status(): int`
+- `successful(): bool`
+- `success(): bool`
+- `failed(): bool`
+- `isError(): bool`
+- `throw(): self`
+- `jsonOrFail(?string $key = null): mixed`
 
 **Error Type Checks:**
-- `isClientError(): bool` - Check if status is 4xx
-- `isServerError(): bool` - Check if status is 5xx
-- `isRedirect(): bool` - Check if status is 3xx
+- `isClientError(): bool`
+- `isServerError(): bool`
+- `isRedirect(): bool`
 
 **Specific Status Code Checks:**
-- `isOk(): bool` - Check if status is 200
-- `isCreated(): bool` - Check if status is 201
-- `isNoContent(): bool` - Check if status is 204
-- `isBadRequest(): bool` - Check if status is 400
-- `isUnauthorized(): bool` - Check if status is 401
-- `isForbidden(): bool` - Check if status is 403
-- `isNotFound(): bool` - Check if status is 404
-- `isUnprocessableEntity(): bool` - Check if status is 422
-- `isTooManyRequests(): bool` - Check if status is 429
-- `isInternalServerError(): bool` - Check if status is 500
+- `isOk(): bool`
+- `isCreated(): bool`
+- `isNoContent(): bool`
+- `isBadRequest(): bool`
+- `isUnauthorized(): bool`
+- `isForbidden(): bool`
+- `isNotFound(): bool`
+- `isUnprocessableEntity(): bool`
+- `isTooManyRequests(): bool`
+- `isInternalServerError(): bool`
 
 #### Content Methods
 
-- `body(): string` - Get raw response body
-- `json(?string $key = null): mixed` - Decode JSON response
-- `headers(): array` - Get all response headers
-- `header(string $name): ?string` - Get specific header
+- `body(): string`
+- `json(?string $key = null): mixed`
+- `headers(): array`
+- `header(string $name): ?string`
 
 ### RequestException
 
@@ -1013,9 +1035,9 @@ use ElliePHP\Components\HttpClient\RequestException;
 try {
     $response = Http::get('https://api.example.com/data');
 } catch (RequestException $e) {
-    echo $e->getMessage();      // Error message
-    echo $e->getCode();         // Error code
-    $previous = $e->getPrevious(); // Original exception
+    echo $e->getMessage();
+    echo $e->getCode();
+    $previous = $e->getPrevious();
 }
 ```
 
@@ -1035,7 +1057,7 @@ composer test:coverage
 
 ## License
 
-This library is open-sourced software licensed under the [MIT license](LICENSE).
+This library is open-sourced software licensed under the MIT license.
 
 ## Contributing
 
@@ -1043,9 +1065,9 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/elliephp/httpclient/issues)
-- **Source**: [GitHub Repository](https://github.com/elliephp/httpclient)
+- Issues: GitHub Issues
+- Source: GitHub Repository
 
 ## Credits
 
-Built on top of [Symfony HttpClient](https://symfony.com/doc/current/http_client.html).
+Built on top of Symfony HttpClient.

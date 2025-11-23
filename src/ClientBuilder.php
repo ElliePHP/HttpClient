@@ -2,6 +2,7 @@
 
 namespace ElliePHP\Components\HttpClient;
 
+use InvalidArgumentException;
 use Symfony\Contracts\HttpClient\Exception\TimeoutExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -493,24 +494,24 @@ class ClientBuilder
      * @param string $name The form field name for the file
      * @param string|resource $file The file path or file resource to upload
      * @return self Returns this builder for method chaining
-     * @throws \InvalidArgumentException If the file path doesn't exist or resource is invalid
+     * @throws InvalidArgumentException If the file path doesn't exist or resource is invalid
      */
     public function attach(string $name, mixed $file): self
     {
         // If it's a string path, open it as a resource
         if (is_string($file)) {
             if (!file_exists($file)) {
-                throw new \InvalidArgumentException("File not found: {$file}");
+                throw new InvalidArgumentException("File not found: {$file}");
             }
             if (!is_readable($file)) {
-                throw new \InvalidArgumentException("File is not readable: {$file}");
+                throw new InvalidArgumentException("File is not readable: {$file}");
             }
-            $file = fopen($file, 'r');
+            $file = fopen($file, 'rb');
         }
         
         // Validate it's a resource
         if (!is_resource($file)) {
-            throw new \InvalidArgumentException("File must be a file path (string) or file resource");
+            throw new InvalidArgumentException("File must be a file path (string) or file resource");
         }
         
         // Store attached files to be merged with body data during request

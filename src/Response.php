@@ -3,10 +3,15 @@
 namespace ElliePHP\Components\HttpClient;
 
 use JsonException;
+use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
 use Symfony\Contracts\HttpClient\ResponseInterface;
+use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
+use Throwable;
 
 /**
- * Response - Enhanced wrapper around Symfony ResponseInterface with convenience methods
+ * Response - Robust wrapper around Symfony ResponseInterface
  */
 class Response
 {
@@ -20,22 +25,54 @@ class Response
     }
 
     /**
-     * Get the response body as a string
+     * Get the response body as a string.
+     * Throws RequestException on network failure (timeout, DNS, etc).
+     *
+     * @throws RequestException
      */
     public function body(): string
     {
-        if ($this->cachedContent === null) {
-            $this->cachedContent = $this->response->getContent(false);
+        if ($this->cachedContent !== null) {
+            return $this->cachedContent;
         }
-        return $this->cachedContent;
+
+        try {
+            // 'false' prevents Symfony from throwing on 4xx/5xx,
+            // but it WILL still throw on network transport errors.
+            $this->cachedContent = $this->response->getContent(false);
+            return $this->cachedContent;
+        } catch (TransportExceptionInterface|ClientExceptionInterface|RedirectionExceptionInterface|ServerExceptionInterface $e) {
+            throw new RequestException('Network error reading body: ' . $e->getMessage(), 0, null, $this, $e);
+        }
     }
 
     /**
-     * Get the HTTP status code
+     * Get the HTTP status code.
+     * Throws RequestException on network failure.
+     *
+     * @throws RequestException
      */
     public function status(): int
     {
-        return $this->response->getStatusCode();
+        try {
+            return $this->response->getStatusCode();
+        } catch (TransportExceptionInterface $e) {
+            throw new RequestException('Network error reading status: ' . $e->getMessage(), 0, null, $this, $e);
+        }
+    }
+
+    /**
+     * Get all response headers.
+     *
+     * @throws RequestException
+     */
+    public function headers(): array
+    {
+        try {
+            return $this->response->getHeaders(false);
+        } catch (TransportExceptionInterface|ClientExceptionInterface|RedirectionExceptionInterface|ServerExceptionInterface $e) {
+            throw new RequestException('Network error reading headers: ' . $e->getMessage(), 0, null, $this, $e);
+        }
     }
 
     /**
@@ -43,8 +80,12 @@ class Response
      */
     public function successful(): bool
     {
-        $status = $this->status();
-        return $status >= 200 && $status < 300;
+        try {
+            $status = $this->status();
+            return $status >= 200 && $status < 300;
+        } catch (RequestException) {
+            return false;
+        }
     }
 
     /**
@@ -60,8 +101,12 @@ class Response
      */
     public function failed(): bool
     {
-        $status = $this->status();
-        return $status >= 400 && $status < 600;
+        try {
+            $status = $this->status();
+            return $status >= 400 && $status < 600;
+        } catch (RequestException) {
+            return true;
+        }
     }
 
     /**
@@ -77,8 +122,12 @@ class Response
      */
     public function isClientError(): bool
     {
-        $status = $this->status();
-        return $status >= 400 && $status < 500;
+        try {
+            $status = $this->status();
+            return $status >= 400 && $status < 500;
+        } catch (RequestException) {
+            return false;
+        }
     }
 
     /**
@@ -86,8 +135,12 @@ class Response
      */
     public function isServerError(): bool
     {
-        $status = $this->status();
-        return $status >= 500 && $status < 600;
+        try {
+            $status = $this->status();
+            return $status >= 500 && $status < 600;
+        } catch (RequestException) {
+            return false;
+        }
     }
 
     /**
@@ -95,30 +148,35 @@ class Response
      */
     public function isRedirect(): bool
     {
-        $status = $this->status();
-        return $status >= 300 && $status < 400;
+        try {
+            $status = $this->status();
+            return $status >= 300 && $status < 400;
+        } catch (RequestException) {
+            return false;
+        }
     }
 
-    // Specific status code helpers
-    public function isOk(): bool { return $this->status() === 200; }
-    public function isCreated(): bool { return $this->status() === 201; }
-    public function isAccepted(): bool { return $this->status() === 202; }
-    public function isNoContent(): bool { return $this->status() === 204; }
-    public function isBadRequest(): bool { return $this->status() === 400; }
-    public function isUnauthorized(): bool { return $this->status() === 401; }
-    public function isForbidden(): bool { return $this->status() === 403; }
-    public function isNotFound(): bool { return $this->status() === 404; }
-    public function isUnprocessableEntity(): bool { return $this->status() === 422; }
-    public function isTooManyRequests(): bool { return $this->status() === 429; }
-    public function isInternalServerError(): bool { return $this->status() === 500; }
-    public function isServiceUnavailable(): bool { return $this->status() === 503; }
+    // Specific status code helpers (Safe versions)
+    public function isOk(): bool { return $this->checkStatus(200); }
+    public function isCreated(): bool { return $this->checkStatus(201); }
+    public function isAccepted(): bool { return $this->checkStatus(202); }
+    public function isNoContent(): bool { return $this->checkStatus(204); }
+    public function isBadRequest(): bool { return $this->checkStatus(400); }
+    public function isUnauthorized(): bool { return $this->checkStatus(401); }
+    public function isForbidden(): bool { return $this->checkStatus(403); }
+    public function isNotFound(): bool { return $this->checkStatus(404); }
+    public function isUnprocessableEntity(): bool { return $this->checkStatus(422); }
+    public function isTooManyRequests(): bool { return $this->checkStatus(429); }
+    public function isInternalServerError(): bool { return $this->checkStatus(500); }
+    public function isServiceUnavailable(): bool { return $this->checkStatus(503); }
 
-    /**
-     * Get all response headers
-     */
-    public function headers(): array
+    private function checkStatus(int $code): bool
     {
-        return $this->response->getHeaders(false);
+        try {
+            return $this->status() === $code;
+        } catch (RequestException) {
+            return false;
+        }
     }
 
     /**
@@ -126,13 +184,17 @@ class Response
      */
     public function header(string $name): ?string
     {
-        $headers = $this->headers();
-        $lowerName = strtolower($name);
+        try {
+            $headers = $this->headers();
+            $lowerName = strtolower($name);
 
-        foreach ($headers as $key => $values) {
-            if (strtolower($key) === $lowerName) {
-                return is_array($values) ? ($values[0] ?? null) : $values;
+            foreach ($headers as $key => $values) {
+                if (strtolower($key) === $lowerName) {
+                    return is_array($values) ? ($values[0] ?? null) : $values;
+                }
             }
+        } catch (RequestException) {
+            return null;
         }
 
         return null;
@@ -151,35 +213,44 @@ class Response
      */
     public function headerValues(string $name): array
     {
-        $headers = $this->headers();
-        $lowerName = strtolower($name);
+        try {
+            $headers = $this->headers();
+            $lowerName = strtolower($name);
 
-        foreach ($headers as $key => $values) {
-            if (strtolower($key) === $lowerName) {
-                return is_array($values) ? $values : [$values];
+            foreach ($headers as $key => $values) {
+                if (strtolower($key) === $lowerName) {
+                    return is_array($values) ? $values : [$values];
+                }
             }
+        } catch (RequestException) {
+            return [];
         }
 
         return [];
     }
 
     /**
-     * Decode JSON response with flexible key access
-     *
-     * @param string|null $key Dot notation supported (e.g., 'user.name')
-     * @param mixed $default Default value if key not found
-     * @param bool $isAssoc Whether to return associative array
+     * Decode JSON response with flexible key access.
+     * Safely handles both Invalid JSON AND Network errors.
      */
     public function json(?string $key = null, mixed $default = null, bool $isAssoc = true): mixed
     {
         if (!$this->jsonCached) {
             try {
                 $content = $this->body();
-                $this->cachedJson = json_decode($content, $isAssoc, 512, JSON_THROW_ON_ERROR);
+
+                if ($content === '') {
+                    $this->cachedJson = null;
+                } else {
+                    $this->cachedJson = json_decode($content, $isAssoc, 512, JSON_THROW_ON_ERROR);
+                }
                 $this->jsonCached = true;
             } catch (JsonException) {
                 $this->cachedJson = null;
                 $this->jsonCached = true;
+                return $default;
+            } catch (RequestException) {
+                // If network failed, we can't parse JSON. Return default.
                 return $default;
             }
         }
@@ -235,12 +306,23 @@ class Response
     public function throw(?callable $callback = null): self
     {
         if ($this->failed()) {
-            $status = $this->status();
-            $body = $this->body();
+            try {
+                $status = $this->status();
+                // Attempt to read body for error details
+                $body = $this->body();
+            } catch (RequestException $e) {
+                // If we can't even read the status/body, re-throw the network exception
+                if ($callback) {
+                    $callback($e, $this);
+                }
+                throw $e;
+            }
 
-            // Try to extract error message
-            $message = "HTTP request returned status code {$status}";
-            $json = $this->json();
+            // Try to extract error message safely
+            $message = "HTTP request returned status code $status";
+
+            // Use safe json method to prevent double-faulting
+            $json = $this->json(null, []);
 
             if (is_array($json)) {
                 $message = $json['message'] ?? $json['error'] ?? $json['error_description'] ?? $message;
@@ -267,7 +349,12 @@ class Response
 
         if ($shouldThrow) {
             $message = $message ?? "HTTP request condition failed";
-            throw new RequestException($message, $this->status());
+            try {
+                $status = $this->status();
+            } catch (RequestException) {
+                $status = 0;
+            }
+            throw new RequestException($message, $status, null, $this);
         }
 
         return $this;
@@ -309,8 +396,12 @@ class Response
      */
     public function info(?string $key = null): mixed
     {
-        $info = $this->response->getInfo();
-        return $key ? ($info[$key] ?? null) : $info;
+        try {
+            $info = $this->response->getInfo();
+            return $key ? ($info[$key] ?? null) : $info;
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     /**
@@ -342,7 +433,8 @@ class Response
      */
     public function toArray(): array
     {
-        return $this->json() ?? [];
+        $data = $this->json();
+        return is_array($data) ? $data : [];
     }
 
     /**
@@ -350,8 +442,12 @@ class Response
      */
     public function bodyOr(string $default): string
     {
-        $body = $this->body();
-        return empty($body) ? $default : $body;
+        try {
+            $body = $this->body();
+            return empty($body) ? $default : $body;
+        } catch (RequestException) {
+            return $default;
+        }
     }
 
     /**
@@ -359,7 +455,11 @@ class Response
      */
     public function isEmpty(): bool
     {
-        return empty($this->body());
+        try {
+            return empty($this->body());
+        } catch (RequestException) {
+            return true;
+        }
     }
 
     /**
@@ -392,10 +492,18 @@ class Response
      */
     public function dd(): never
     {
+        $status = 'Error';
+        $headers = [];
+        $body = 'Error reading body';
+
+        try { $status = $this->status(); } catch (RequestException) {}
+        try { $headers = $this->headers(); } catch (RequestException) {}
+        try { $body = $this->body(); } catch (RequestException) {}
+
         dd([
-            'status' => $this->status(),
-            'headers' => $this->headers(),
-            'body' => $this->body(),
+            'status' => $status,
+            'headers' => $headers,
+            'body' => $body,
         ]);
     }
 
@@ -404,10 +512,18 @@ class Response
      */
     public function dump(): self
     {
+        $status = 'Error';
+        $headers = [];
+        $body = 'Error reading body';
+
+        try { $status = $this->status(); } catch (RequestException) {}
+        try { $headers = $this->headers(); } catch (RequestException) {}
+        try { $body = $this->body(); } catch (RequestException) {}
+
         dump([
-            'status' => $this->status(),
-            'headers' => $this->headers(),
-            'body' => $this->body(),
+            'status' => $status,
+            'headers' => $headers,
+            'body' => $body,
         ]);
         return $this;
     }
@@ -417,6 +533,10 @@ class Response
      */
     public function __toString(): string
     {
-        return $this->body();
+        try {
+            return $this->body();
+        } catch (RequestException) {
+            return '';
+        }
     }
 }

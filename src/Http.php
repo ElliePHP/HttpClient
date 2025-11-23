@@ -54,8 +54,7 @@ class Http
      */
     public static function __callStatic(string $method, array $arguments): mixed
     {
-        $client = new HttpClient();
-        return $client->$method(...$arguments);
+        return new HttpClient()->$method(...$arguments);
     }
 }
 
