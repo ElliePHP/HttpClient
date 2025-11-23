@@ -6,12 +6,13 @@ use JsonException;
 use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
- * Response - Wrapper around Symfony ResponseInterface with convenience methods
+ * Response - Enhanced wrapper around Symfony ResponseInterface with convenience methods
  */
 class Response
 {
     private ?string $cachedContent = null;
-    private ?array $cachedJson = null;
+    private mixed $cachedJson = null;
+    private bool $jsonCached = false;
 
     public function __construct(
         private readonly ResponseInterface $response
@@ -20,11 +21,6 @@ class Response
 
     /**
      * Get the response body as a string
-     *
-     * Returns the complete raw response body. The content is cached
-     * after the first call to avoid multiple reads.
-     *
-     * @return string The raw response body
      */
     public function body(): string
     {
@@ -36,10 +32,6 @@ class Response
 
     /**
      * Get the HTTP status code
-     * 
-     * Returns the HTTP status code from the response (e.g., 200, 404, 500).
-     * 
-     * @return int The HTTP status code
      */
     public function status(): int
     {
@@ -48,11 +40,6 @@ class Response
 
     /**
      * Check if the response has a successful status code (2xx)
-     * 
-     * Returns true if the HTTP status code is in the 200-299 range,
-     * indicating a successful request.
-     * 
-     * @return bool True if status is 2xx, false otherwise
      */
     public function successful(): bool
     {
@@ -61,12 +48,7 @@ class Response
     }
 
     /**
-     * Check if the response has a successful status code (2xx)
-     * 
-     * Alias for successful(). Returns true if the HTTP status code
-     * is in the 200-299 range, indicating a successful request.
-     * 
-     * @return bool True if status is 2xx, false otherwise
+     * Alias for successful()
      */
     public function success(): bool
     {
@@ -75,11 +57,6 @@ class Response
 
     /**
      * Check if the response has a failed status code (4xx or 5xx)
-     * 
-     * Returns true if the HTTP status code is in the 400-599 range,
-     * indicating a client error (4xx) or server error (5xx).
-     * 
-     * @return bool True if status is 4xx or 5xx, false otherwise
      */
     public function failed(): bool
     {
@@ -88,12 +65,7 @@ class Response
     }
 
     /**
-     * Check if the response has an error status code (4xx or 5xx)
-     * 
-     * Alias for failed(). Returns true if the HTTP status code is in
-     * the 400-599 range, indicating a client error (4xx) or server error (5xx).
-     * 
-     * @return bool True if status is 4xx or 5xx, false otherwise
+     * Alias for failed()
      */
     public function isError(): bool
     {
@@ -102,11 +74,6 @@ class Response
 
     /**
      * Check if the response has a client error status code (4xx)
-     * 
-     * Returns true if the HTTP status code is in the 400-499 range,
-     * indicating a client error (e.g., 400 Bad Request, 404 Not Found).
-     * 
-     * @return bool True if status is 4xx, false otherwise
      */
     public function isClientError(): bool
     {
@@ -116,11 +83,6 @@ class Response
 
     /**
      * Check if the response has a server error status code (5xx)
-     * 
-     * Returns true if the HTTP status code is in the 500-599 range,
-     * indicating a server error (e.g., 500 Internal Server Error, 503 Service Unavailable).
-     * 
-     * @return bool True if status is 5xx, false otherwise
      */
     public function isServerError(): bool
     {
@@ -130,11 +92,6 @@ class Response
 
     /**
      * Check if the response has a redirect status code (3xx)
-     * 
-     * Returns true if the HTTP status code is in the 300-399 range,
-     * indicating a redirect (e.g., 301 Moved Permanently, 302 Found).
-     * 
-     * @return bool True if status is 3xx, false otherwise
      */
     public function isRedirect(): bool
     {
@@ -142,113 +99,22 @@ class Response
         return $status >= 300 && $status < 400;
     }
 
-    /**
-     * Check if the response status code is 200 OK
-     * 
-     * @return bool True if status is 200, false otherwise
-     */
-    public function isOk(): bool
-    {
-        return $this->status() === 200;
-    }
-
-    /**
-     * Check if the response status code is 201 Created
-     * 
-     * @return bool True if status is 201, false otherwise
-     */
-    public function isCreated(): bool
-    {
-        return $this->status() === 201;
-    }
-
-    /**
-     * Check if the response status code is 204 No Content
-     * 
-     * @return bool True if status is 204, false otherwise
-     */
-    public function isNoContent(): bool
-    {
-        return $this->status() === 204;
-    }
-
-    /**
-     * Check if the response status code is 400 Bad Request
-     * 
-     * @return bool True if status is 400, false otherwise
-     */
-    public function isBadRequest(): bool
-    {
-        return $this->status() === 400;
-    }
-
-    /**
-     * Check if the response status code is 401 Unauthorized
-     * 
-     * @return bool True if status is 401, false otherwise
-     */
-    public function isUnauthorized(): bool
-    {
-        return $this->status() === 401;
-    }
-
-    /**
-     * Check if the response status code is 403 Forbidden
-     * 
-     * @return bool True if status is 403, false otherwise
-     */
-    public function isForbidden(): bool
-    {
-        return $this->status() === 403;
-    }
-
-    /**
-     * Check if the response status code is 404 Not Found
-     * 
-     * @return bool True if status is 404, false otherwise
-     */
-    public function isNotFound(): bool
-    {
-        return $this->status() === 404;
-    }
-
-    /**
-     * Check if the response status code is 422 Unprocessable Entity
-     * 
-     * @return bool True if status is 422, false otherwise
-     */
-    public function isUnprocessableEntity(): bool
-    {
-        return $this->status() === 422;
-    }
-
-    /**
-     * Check if the response status code is 429 Too Many Requests
-     * 
-     * @return bool True if status is 429, false otherwise
-     */
-    public function isTooManyRequests(): bool
-    {
-        return $this->status() === 429;
-    }
-
-    /**
-     * Check if the response status code is 500 Internal Server Error
-     * 
-     * @return bool True if status is 500, false otherwise
-     */
-    public function isInternalServerError(): bool
-    {
-        return $this->status() === 500;
-    }
+    // Specific status code helpers
+    public function isOk(): bool { return $this->status() === 200; }
+    public function isCreated(): bool { return $this->status() === 201; }
+    public function isAccepted(): bool { return $this->status() === 202; }
+    public function isNoContent(): bool { return $this->status() === 204; }
+    public function isBadRequest(): bool { return $this->status() === 400; }
+    public function isUnauthorized(): bool { return $this->status() === 401; }
+    public function isForbidden(): bool { return $this->status() === 403; }
+    public function isNotFound(): bool { return $this->status() === 404; }
+    public function isUnprocessableEntity(): bool { return $this->status() === 422; }
+    public function isTooManyRequests(): bool { return $this->status() === 429; }
+    public function isInternalServerError(): bool { return $this->status() === 500; }
+    public function isServiceUnavailable(): bool { return $this->status() === 503; }
 
     /**
      * Get all response headers
-     * 
-     * Returns an associative array of all response headers.
-     * Header names are keys, and values are arrays of header values.
-     * 
-     * @return array Associative array of headers
      */
     public function headers(): array
     {
@@ -256,128 +122,301 @@ class Response
     }
 
     /**
-     * Get a specific response header
-     * 
-     * Returns the value of a specific header by name. Header name
-     * matching is case-insensitive. If the header has multiple values,
-     * only the first value is returned.
-     * 
-     * @param string $name The header name (case-insensitive)
-     * @return string|null The header value, or null if not found
+     * Get a specific response header (case-insensitive)
      */
     public function header(string $name): ?string
     {
         $headers = $this->headers();
         $lowerName = strtolower($name);
-        
+
         foreach ($headers as $key => $values) {
             if (strtolower($key) === $lowerName) {
                 return is_array($values) ? ($values[0] ?? null) : $values;
             }
         }
-        
+
         return null;
     }
 
     /**
-     * Decode JSON response with optional key access
-     * 
-     * Decodes the response body as JSON and returns the result as an array.
-     * If a key is provided, returns the value at that key in the decoded JSON.
-     * The decoded JSON is cached after the first call.
-     * 
-     * Returns null if:
-     * - The response body is not valid JSON
-     * - A key is provided but doesn't exist in the decoded JSON
-     * 
-     * Example usage:
-     * ```php
-     * $response = $client->get('https://api.example.com/user');
-     * $data = $response->json();           // Get entire decoded array
-     * $name = $response->json('name');     // Get specific key value
-     * ```
-     * 
-     * @param string|null $key Optional key to access in the decoded JSON
-     * @return mixed The decoded JSON array, or value at key, or null on failure
+     * Check if a header exists
      */
-    public function json(?string $key = null): mixed
+    public function hasHeader(string $name): bool
     {
-        if ($this->cachedJson === null) {
+        return $this->header($name) !== null;
+    }
+
+    /**
+     * Get all values for a specific header
+     */
+    public function headerValues(string $name): array
+    {
+        $headers = $this->headers();
+        $lowerName = strtolower($name);
+
+        foreach ($headers as $key => $values) {
+            if (strtolower($key) === $lowerName) {
+                return is_array($values) ? $values : [$values];
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * Decode JSON response with flexible key access
+     *
+     * @param string|null $key Dot notation supported (e.g., 'user.name')
+     * @param mixed $default Default value if key not found
+     * @param bool $isAssoc Whether to return associative array
+     */
+    public function json(?string $key = null, mixed $default = null, bool $isAssoc = true): mixed
+    {
+        if (!$this->jsonCached) {
             try {
                 $content = $this->body();
-                $decoded = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
-                $this->cachedJson = is_array($decoded) ? $decoded : [];
+                $this->cachedJson = json_decode($content, $isAssoc, 512, JSON_THROW_ON_ERROR);
+                $this->jsonCached = true;
             } catch (JsonException) {
-                return null;
+                $this->cachedJson = null;
+                $this->jsonCached = true;
+                return $default;
             }
         }
 
         if ($key === null) {
-            return $this->cachedJson;
+            return $this->cachedJson ?? $default;
         }
 
-        return $this->cachedJson[$key] ?? null;
-    }
-
-    /**
-     * Throw an exception if the response indicates a failure
-     * 
-     * Throws a RequestException if the response has a failed status code (4xx or 5xx).
-     * Returns the response instance for method chaining if successful.
-     * 
-     * Example:
-     * ```php
-     * $response = Http::get('https://api.example.com/users');
-     * $response->throw(); // Throws if 4xx or 5xx
-     * $data = $response->json();
-     * ```
-     * 
-     * @return $this Returns this response instance for method chaining
-     * @throws RequestException If the response has a failed status code
-     */
-    public function throw(): self
-    {
-        if ($this->failed()) {
-            $status = $this->status();
-            $message = "HTTP request returned status code {$status}";
-            
-            // Try to get error message from JSON response
-            $body = $this->body();
-            if (!empty($body)) {
-                $json = $this->json();
-                if (is_array($json) && isset($json['message'])) {
-                    $message = $json['message'];
-                } elseif (is_array($json) && isset($json['error'])) {
-                    $message = $json['error'];
-                }
+        // Support dot notation for nested keys
+        $value = $this->cachedJson;
+        foreach (explode('.', $key) as $segment) {
+            if (is_array($value) && array_key_exists($segment, $value)) {
+                $value = $value[$segment];
+            } elseif (is_object($value) && isset($value->$segment)) {
+                $value = $value->$segment;
+            } else {
+                return $default;
             }
-            
-            throw new RequestException($message, $status);
         }
-        
-        return $this;
+
+        return $value;
     }
 
     /**
      * Get JSON response or throw an exception if the request failed
-     * 
-     * Returns the decoded JSON response if successful, or throws a RequestException
-     * if the response has a failed status code (4xx or 5xx).
-     * 
-     * Example:
-     * ```php
-     * // This will throw if the response is not successful
-     * $data = Http::get('https://api.example.com/users')
-     *     ->jsonOrFail();
-     * ```
-     * 
-     * @param string|null $key Optional key to access in the decoded JSON
-     * @return mixed The decoded JSON array, or value at key
-     * @throws RequestException If the response has a failed status code
      */
-    public function jsonOrFail(?string $key = null): mixed
+    public function jsonOrFail(?string $key = null, mixed $default = null): mixed
     {
         $this->throw();
-        return $this->json($key);
+        return $this->json($key, $default);
+    }
+
+    /**
+     * Get response as object
+     */
+    public function object(?string $key = null, mixed $default = null): mixed
+    {
+        return $this->json($key, $default, false);
+    }
+
+    /**
+     * Collect response as a collection-like array with helper methods
+     */
+    public function collect(?string $key = null): ResponseCollection
+    {
+        $data = $this->json($key, []);
+        return new ResponseCollection(is_array($data) ? $data : []);
+    }
+
+    /**
+     * Throw an exception if the response indicates a failure
+     */
+    public function throw(?callable $callback = null): self
+    {
+        if ($this->failed()) {
+            $status = $this->status();
+            $body = $this->body();
+
+            // Try to extract error message
+            $message = "HTTP request returned status code {$status}";
+            $json = $this->json();
+
+            if (is_array($json)) {
+                $message = $json['message'] ?? $json['error'] ?? $json['error_description'] ?? $message;
+            }
+
+            $exception = new RequestException($message, $status, $body, $this);
+
+            if ($callback) {
+                $callback($exception, $this);
+            }
+
+            throw $exception;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Throw an exception if a condition is true
+     */
+    public function throwIf(bool|callable $condition, ?string $message = null): self
+    {
+        $shouldThrow = is_callable($condition) ? $condition($this) : $condition;
+
+        if ($shouldThrow) {
+            $message = $message ?? "HTTP request condition failed";
+            throw new RequestException($message, $this->status());
+        }
+
+        return $this;
+    }
+
+    /**
+     * Throw an exception unless a condition is true
+     */
+    public function throwUnless(bool|callable $condition, ?string $message = null): self
+    {
+        $shouldNotThrow = is_callable($condition) ? $condition($this) : $condition;
+        return $this->throwIf(!$shouldNotThrow, $message);
+    }
+
+    /**
+     * Execute callback if response is successful
+     */
+    public function onSuccess(callable $callback): self
+    {
+        if ($this->successful()) {
+            $callback($this);
+        }
+        return $this;
+    }
+
+    /**
+     * Execute callback if response failed
+     */
+    public function onError(callable $callback): self
+    {
+        if ($this->failed()) {
+            $callback($this);
+        }
+        return $this;
+    }
+
+    /**
+     * Get response info (timing, headers size, etc.)
+     */
+    public function info(?string $key = null): mixed
+    {
+        $info = $this->response->getInfo();
+        return $key ? ($info[$key] ?? null) : $info;
+    }
+
+    /**
+     * Get the effective URL (after redirects)
+     */
+    public function effectiveUrl(): ?string
+    {
+        return $this->info('url');
+    }
+
+    /**
+     * Get the total time taken for the request
+     */
+    public function totalTime(): ?float
+    {
+        return $this->info('total_time');
+    }
+
+    /**
+     * Get the underlying Symfony response
+     */
+    public function toSymfonyResponse(): ResponseInterface
+    {
+        return $this->response;
+    }
+
+    /**
+     * Convert response to array
+     */
+    public function toArray(): array
+    {
+        return $this->json() ?? [];
+    }
+
+    /**
+     * Get response body or default value
+     */
+    public function bodyOr(string $default): string
+    {
+        $body = $this->body();
+        return empty($body) ? $default : $body;
+    }
+
+    /**
+     * Check if response body is empty
+     */
+    public function isEmpty(): bool
+    {
+        return empty($this->body());
+    }
+
+    /**
+     * Get response cookies
+     */
+    public function cookies(): array
+    {
+        $cookies = [];
+        $setCookieHeaders = $this->headerValues('Set-Cookie');
+
+        foreach ($setCookieHeaders as $header) {
+            if (preg_match('/^([^=]+)=([^;]+)/', $header, $matches)) {
+                $cookies[$matches[1]] = $matches[2];
+            }
+        }
+
+        return $cookies;
+    }
+
+    /**
+     * Get a specific cookie value
+     */
+    public function cookie(string $name): ?string
+    {
+        return $this->cookies()[$name] ?? null;
+    }
+
+    /**
+     * Dump the response and continue
+     */
+    public function dd(): never
+    {
+        dd([
+            'status' => $this->status(),
+            'headers' => $this->headers(),
+            'body' => $this->body(),
+        ]);
+    }
+
+    /**
+     * Dump the response and continue
+     */
+    public function dump(): self
+    {
+        dump([
+            'status' => $this->status(),
+            'headers' => $this->headers(),
+            'body' => $this->body(),
+        ]);
+        return $this;
+    }
+
+    /**
+     * String representation
+     */
+    public function __toString(): string
+    {
+        return $this->body();
     }
 }

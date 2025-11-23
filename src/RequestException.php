@@ -2,26 +2,22 @@
 
 namespace ElliePHP\Components\HttpClient;
 
-use Exception;
+use RuntimeException;
 use Throwable;
 
-/**
- * Exception thrown when an HTTP request fails.
- * 
- * This exception wraps errors that occur during HTTP requests,
- * including network failures, timeouts, and other transport-level errors.
- */
-class RequestException extends Exception
+class RequestException extends RuntimeException
 {
-    /**
-     * Create a new RequestException.
-     *
-     * @param string $message The error message
-     * @param int $code The error code (default: 0)
-     * @param Throwable|null $previous The previous exception for exception chaining
-     */
-    public function __construct(string $message = "", int $code = 0, ?Throwable $previous = null)
-    {
-        parent::__construct($message, $code, $previous);
+    public function __construct(
+        string                     $message,
+        private readonly int       $statusCode,
+        private readonly ?string   $body = null,
+        private readonly ?Response $response = null,
+        ?Throwable                 $previous = null
+    ) {
+        parent::__construct($message, 0, $previous);
     }
+
+    public function getStatusCode(): int { return $this->statusCode; }
+    public function getBody(): ?string { return $this->body; }
+    public function getResponse(): ?Response { return $this->response; }
 }
