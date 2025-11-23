@@ -210,6 +210,144 @@ class ClientBuilder
     }
 
     /**
+     * Set the User-Agent header
+     * 
+     * Sets the User-Agent header for the request.
+     * 
+     * Example:
+     * ```php
+     * $builder->withUserAgent('MyApp/1.0')->get('/api/data');
+     * ```
+     * 
+     * @param string $userAgent The User-Agent string
+     * @return self Returns this builder for method chaining
+     */
+    public function withUserAgent(string $userAgent): self
+    {
+        $this->headers['User-Agent'] = $userAgent;
+        return $this;
+    }
+
+    /**
+     * Set the Content-Type header
+     * 
+     * Sets the Content-Type header for the request.
+     * 
+     * Example:
+     * ```php
+     * $builder->withContentType('application/xml')->post('/api/data', $xmlData);
+     * ```
+     * 
+     * @param string $contentType The Content-Type value
+     * @return self Returns this builder for method chaining
+     */
+    public function withContentType(string $contentType): self
+    {
+        $this->headers['Content-Type'] = $contentType;
+        return $this;
+    }
+
+    /**
+     * Set the Accept header
+     * 
+     * Sets the Accept header to specify the media types that are acceptable
+     * for the response.
+     * 
+     * Example:
+     * ```php
+     * $builder->withAccept('application/xml')->get('/api/data');
+     * ```
+     * 
+     * @param string $accept The Accept header value
+     * @return self Returns this builder for method chaining
+     */
+    public function withAccept(string $accept): self
+    {
+        $this->headers['Accept'] = $accept;
+        return $this;
+    }
+
+    /**
+     * Set a single header
+     * 
+     * Sets a single header by name and value.
+     * 
+     * Example:
+     * ```php
+     * $builder->withHeader('X-Custom-Header', 'value')->get('/api/data');
+     * ```
+     * 
+     * @param string $name The header name
+     * @param string $value The header value
+     * @return self Returns this builder for method chaining
+     */
+    public function withHeader(string $name, string $value): self
+    {
+        $this->headers[$name] = $value;
+        return $this;
+    }
+
+    /**
+     * Set the maximum number of redirects to follow
+     * 
+     * Configures the maximum number of redirects that will be followed
+     * before throwing an exception.
+     * 
+     * Example:
+     * ```php
+     * $builder->withMaxRedirects(5)->get('/api/data');
+     * ```
+     * 
+     * @param int $maxRedirects Maximum number of redirects (0 to disable)
+     * @return self Returns this builder for method chaining
+     */
+    public function withMaxRedirects(int $maxRedirects): self
+    {
+        $this->options['max_redirects'] = $maxRedirects;
+        return $this;
+    }
+
+    /**
+     * Enable or disable SSL certificate verification
+     * 
+     * Controls whether SSL certificates should be verified. Disabling
+     * verification is not recommended for production use.
+     * 
+     * Example:
+     * ```php
+     * $builder->withVerify(false)->get('https://self-signed-cert.example.com');
+     * ```
+     * 
+     * @param bool $verify Whether to verify SSL certificates (default: true)
+     * @return self Returns this builder for method chaining
+     */
+    public function withVerify(bool $verify = true): self
+    {
+        $this->options['verify_peer'] = $verify;
+        $this->options['verify_host'] = $verify;
+        return $this;
+    }
+
+    /**
+     * Configure proxy settings
+     * 
+     * Sets the proxy URL for requests.
+     * 
+     * Example:
+     * ```php
+     * $builder->withProxy('http://proxy.example.com:8080')->get('https://api.example.com/data');
+     * ```
+     * 
+     * @param string $proxyUrl The proxy URL (e.g., 'http://proxy.example.com:8080')
+     * @return self Returns this builder for method chaining
+     */
+    public function withProxy(string $proxyUrl): self
+    {
+        $this->options['proxy'] = $proxyUrl;
+        return $this;
+    }
+
+    /**
      * Set additional Symfony HttpClient options
      * 
      * This method allows you to pass any Symfony HttpClient options directly.

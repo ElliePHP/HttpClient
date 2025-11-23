@@ -28,9 +28,39 @@ composer require elliephp/httpclient
 
 ## Quick Start
 
-### Static Methods (Simple Usage)
+### Http Facade (Recommended)
 
-For quick, one-off requests, use static methods:
+The `Http` facade provides a clean, static interface for making requests:
+
+```php
+use ElliePHP\Components\HttpClient\Http;
+
+// Simple GET request
+$response = Http::get('https://api.example.com/users');
+
+// Configured request with method chaining
+$response = Http::withBaseUrl('https://api.example.com')
+    ->withToken('your-api-token')
+    ->withUserAgent('MyApp/1.0')
+    ->acceptJson()
+    ->get('/users');
+
+// POST request
+$response = Http::post('https://api.example.com/users', [
+    'name' => 'John Doe',
+    'email' => 'john@example.com'
+]);
+
+// Check response
+if ($response->successful()) {
+    $data = $response->json();
+    echo "User created: " . $data['name'];
+}
+```
+
+### Static Methods (HttpClient)
+
+For quick, one-off requests, use static methods on `HttpClient`:
 
 ```php
 use ElliePHP\Components\HttpClient\HttpClient;
@@ -72,11 +102,13 @@ $response = $client
 #### GET Request
 
 ```php
+use ElliePHP\Components\HttpClient\Http;
+
 // Simple GET
-$response = HttpClient::get('https://api.example.com/users');
+$response = Http::get('https://api.example.com/users');
 
 // GET with query parameters
-$response = HttpClient::get('https://api.example.com/users', [
+$response = Http::get('https://api.example.com/users', [
     'page' => 1,
     'limit' => 10
 ]);
@@ -85,16 +117,16 @@ $response = HttpClient::get('https://api.example.com/users', [
 #### POST Request
 
 ```php
+use ElliePHP\Components\HttpClient\Http;
+
 // POST with form data
-$response = HttpClient::post('https://api.example.com/users', [
+$response = Http::post('https://api.example.com/users', [
     'name' => 'John Doe',
     'email' => 'john@example.com'
 ]);
 
 // POST with JSON
-$client = new HttpClient();
-$response = $client
-    ->asJson()
+$response = Http::asJson()
     ->post('https://api.example.com/users', [
         'name' => 'John Doe',
         'email' => 'john@example.com'
@@ -104,7 +136,9 @@ $response = $client
 #### PUT Request
 
 ```php
-$response = HttpClient::put('https://api.example.com/users/123', [
+use ElliePHP\Components\HttpClient\Http;
+
+$response = Http::put('https://api.example.com/users/123', [
     'name' => 'Jane Doe'
 ]);
 ```
@@ -112,7 +146,9 @@ $response = HttpClient::put('https://api.example.com/users/123', [
 #### PATCH Request
 
 ```php
-$response = HttpClient::patch('https://api.example.com/users/123', [
+use ElliePHP\Components\HttpClient\Http;
+
+$response = Http::patch('https://api.example.com/users/123', [
     'status' => 'active'
 ]);
 ```
@@ -120,7 +156,9 @@ $response = HttpClient::patch('https://api.example.com/users/123', [
 #### DELETE Request
 
 ```php
-$response = HttpClient::delete('https://api.example.com/users/123');
+use ElliePHP\Components\HttpClient\Http;
+
+$response = Http::delete('https://api.example.com/users/123');
 ```
 
 ### Authentication
@@ -128,20 +166,18 @@ $response = HttpClient::delete('https://api.example.com/users/123');
 #### Bearer Token Authentication
 
 ```php
-$client = new HttpClient();
+use ElliePHP\Components\HttpClient\Http;
 
-$response = $client
-    ->withToken('your-api-token')
+$response = Http::withToken('your-api-token')
     ->get('https://api.example.com/protected-resource');
 ```
 
 #### Basic Authentication
 
 ```php
-$client = new HttpClient();
+use ElliePHP\Components\HttpClient\Http;
 
-$response = $client
-    ->withBasicAuth('username', 'password')
+$response = Http::withBasicAuth('username', 'password')
     ->get('https://api.example.com/protected-resource');
 ```
 
@@ -150,11 +186,10 @@ $response = $client
 #### Sending JSON Requests
 
 ```php
-$client = new HttpClient();
+use ElliePHP\Components\HttpClient\Http;
 
 // asJson() sets Content-Type header and encodes body as JSON
-$response = $client
-    ->asJson()
+$response = Http::asJson()
     ->post('https://api.example.com/users', [
         'name' => 'John Doe',
         'email' => 'john@example.com',
@@ -168,7 +203,9 @@ $response = $client
 #### Receiving JSON Responses
 
 ```php
-$response = HttpClient::get('https://api.example.com/users/123');
+use ElliePHP\Components\HttpClient\Http;
+
+$response = Http::get('https://api.example.com/users/123');
 
 // Get entire JSON response as array
 $data = $response->json();
@@ -185,11 +222,10 @@ $data = $response->json(); // Returns null if JSON is invalid
 #### Accept JSON Header
 
 ```php
-$client = new HttpClient();
+use ElliePHP\Components\HttpClient\Http;
 
 // Sets Accept: application/json header
-$response = $client
-    ->acceptJson()
+$response = Http::acceptJson()
     ->get('https://api.example.com/users');
 ```
 
@@ -198,16 +234,14 @@ $response = $client
 #### Base URL
 
 ```php
-$client = new HttpClient();
+use ElliePHP\Components\HttpClient\Http;
 
 // Set base URL for all requests
-$response = $client
-    ->withBaseUrl('https://api.example.com')
+$response = Http::withBaseUrl('https://api.example.com')
     ->get('/users'); // Requests https://api.example.com/users
 
 // Absolute URLs override base URL
-$response = $client
-    ->withBaseUrl('https://api.example.com')
+$response = Http::withBaseUrl('https://api.example.com')
     ->get('https://other-api.com/data'); // Requests https://other-api.com/data
 ```
 
@@ -224,16 +258,80 @@ $response = $client
         'X-Custom-Header' => 'value'
     ])
     ->get('https://api.example.com/data');
+
+// Or use convenience methods for common headers
+$response = Http::withUserAgent('MyApp/1.0')
+    ->withHeader('X-API-Key', 'secret-key')
+    ->get('https://api.example.com/data');
+```
+
+#### User-Agent Header
+
+```php
+// Set User-Agent header
+$response = Http::withUserAgent('MyApp/1.0')
+    ->get('https://api.example.com/data');
+```
+
+#### Content-Type Header
+
+```php
+// Set Content-Type header
+$response = Http::withContentType('application/xml')
+    ->post('https://api.example.com/data', $xmlData);
+```
+
+#### Accept Header
+
+```php
+// Set Accept header
+$response = Http::withAccept('application/xml')
+    ->get('https://api.example.com/data');
+```
+
+#### Single Header
+
+```php
+// Set a single custom header
+$response = Http::withHeader('X-Custom-Header', 'value')
+    ->get('https://api.example.com/data');
+```
+
+#### Maximum Redirects
+
+```php
+// Configure maximum number of redirects to follow
+$response = Http::withMaxRedirects(5)
+    ->get('https://api.example.com/data');
+```
+
+#### SSL Verification
+
+```php
+// Disable SSL certificate verification (not recommended for production)
+$response = Http::withVerify(false)
+    ->get('https://self-signed-cert.example.com');
+
+// Enable SSL verification (default)
+$response = Http::withVerify(true)
+    ->get('https://api.example.com/data');
+```
+
+#### Proxy Configuration
+
+```php
+// Configure proxy for requests
+$response = Http::withProxy('http://proxy.example.com:8080')
+    ->get('https://api.example.com/data');
 ```
 
 #### Timeout
 
 ```php
-$client = new HttpClient();
+use ElliePHP\Components\HttpClient\Http;
 
 // Set timeout in seconds
-$response = $client
-    ->withTimeout(30)
+$response = Http::withTimeout(30)
     ->get('https://api.example.com/slow-endpoint');
 ```
 
@@ -244,27 +342,27 @@ Configure automatic retry behavior for failed requests:
 #### Exponential Backoff
 
 ```php
-$client = new HttpClient();
+use ElliePHP\Components\HttpClient\Http;
 
-$response = $client
-    ->withRetry([
-        'max_retries' => 3,      // Retry up to 3 times
-        'delay' => 1000,         // Start with 1 second delay (milliseconds)
-        'multiplier' => 2,       // Double delay each time: 1s, 2s, 4s
-        'max_delay' => 10000,    // Cap delay at 10 seconds
-    ])
+$response = Http::withRetry([
+    'max_retries' => 3,      // Retry up to 3 times
+    'delay' => 1000,         // Start with 1 second delay (milliseconds)
+    'multiplier' => 2,       // Double delay each time: 1s, 2s, 4s
+    'max_delay' => 10000,    // Cap delay at 10 seconds
+])
     ->get('https://api.example.com/data');
 ```
 
 #### Fixed Delay
 
 ```php
-$response = $client
-    ->withRetry([
-        'max_retries' => 5,
-        'delay' => 2000,         // 2 second delay
-        'multiplier' => 1,       // Keep delay constant
-    ])
+use ElliePHP\Components\HttpClient\Http;
+
+$response = Http::withRetry([
+    'max_retries' => 5,
+    'delay' => 2000,         // 2 second delay
+    'multiplier' => 1,       // Keep delay constant
+])
     ->get('https://api.example.com/data');
 ```
 
@@ -273,26 +371,28 @@ $response = $client
 Add randomness to prevent thundering herd:
 
 ```php
-$response = $client
-    ->withRetry([
-        'max_retries' => 3,
-        'delay' => 1000,
-        'multiplier' => 2,
-        'jitter' => 0.1,         // Add ±10% random variation
-    ])
+use ElliePHP\Components\HttpClient\Http;
+
+$response = Http::withRetry([
+    'max_retries' => 3,
+    'delay' => 1000,
+    'multiplier' => 2,
+    'jitter' => 0.1,         // Add ±10% random variation
+])
     ->get('https://api.example.com/data');
 ```
 
 #### Retry Specific Status Codes
 
 ```php
-$response = $client
-    ->withRetry([
-        'max_retries' => 3,
-        'delay' => 1000,
-        'multiplier' => 2,
-        'http_codes' => [429, 500, 502, 503, 504], // Only retry these codes
-    ])
+use ElliePHP\Components\HttpClient\Http;
+
+$response = Http::withRetry([
+    'max_retries' => 3,
+    'delay' => 1000,
+    'multiplier' => 2,
+    'http_codes' => [429, 500, 502, 503, 504], // Only retry these codes
+])
     ->get('https://api.example.com/data');
 ```
 
@@ -303,15 +403,14 @@ $response = $client
 Pass any Symfony HttpClient options directly:
 
 ```php
-$client = new HttpClient();
+use ElliePHP\Components\HttpClient\Http;
 
-$response = $client
-    ->withOptions([
-        'max_redirects' => 5,
-        'timeout' => 30,
-        'verify_peer' => true,
-        'verify_host' => true,
-    ])
+$response = Http::withOptions([
+    'max_redirects' => 5,
+    'timeout' => 30,
+    'verify_peer' => true,
+    'verify_host' => true,
+])
     ->get('https://api.example.com/data');
 ```
 
@@ -322,7 +421,9 @@ For all available options, see the [Symfony HttpClient documentation](https://sy
 #### Check Response Status
 
 ```php
-$response = HttpClient::get('https://api.example.com/users');
+use ElliePHP\Components\HttpClient\Http;
+
+$response = Http::get('https://api.example.com/users');
 
 // Check if successful (2xx status)
 if ($response->successful()) {
@@ -341,7 +442,9 @@ $status = $response->status(); // e.g., 200, 404, 500
 #### Access Response Data
 
 ```php
-$response = HttpClient::get('https://api.example.com/users');
+use ElliePHP\Components\HttpClient\Http;
+
+$response = Http::get('https://api.example.com/users');
 
 // Get raw body
 $body = $response->body();
@@ -356,7 +459,9 @@ $name = $response->json('name');
 #### Access Response Headers
 
 ```php
-$response = HttpClient::get('https://api.example.com/users');
+use ElliePHP\Components\HttpClient\Http;
+
+$response = Http::get('https://api.example.com/users');
 
 // Get all headers
 $headers = $response->headers();
@@ -371,11 +476,11 @@ $rateLimit = $response->header('X-RateLimit-Remaining');
 The library throws `RequestException` for network errors and timeouts:
 
 ```php
-use ElliePHP\Components\HttpClient\HttpClient;
+use ElliePHP\Components\HttpClient\Http;
 use ElliePHP\Components\HttpClient\RequestException;
 
 try {
-    $response = HttpClient::get('https://api.example.com/users');
+    $response = Http::get('https://api.example.com/users');
     
     if ($response->successful()) {
         $data = $response->json();
@@ -406,8 +511,26 @@ try {
 All configuration methods return a `ClientBuilder` instance, allowing fluent method chaining:
 
 ```php
-$client = new HttpClient();
+// Using Http facade
+$response = Http::withBaseUrl('https://api.example.com')
+    ->withToken('your-api-token')
+    ->withUserAgent('MyApp/1.0')
+    ->withTimeout(30)
+    ->withMaxRedirects(5)
+    ->withRetry([
+        'max_retries' => 3,
+        'delay' => 1000,
+        'multiplier' => 2,
+    ])
+    ->acceptJson()
+    ->asJson()
+    ->post('/users', [
+        'name' => 'John Doe',
+        'email' => 'john@example.com'
+    ]);
 
+// Or using HttpClient instance
+$client = new HttpClient();
 $response = $client
     ->withBaseUrl('https://api.example.com')
     ->withToken('your-api-token')
@@ -430,10 +553,10 @@ $response = $client
 ### Example 1: Simple API Client
 
 ```php
-use ElliePHP\Components\HttpClient\HttpClient;
+use ElliePHP\Components\HttpClient\Http;
 
-// Quick one-off requests
-$users = HttpClient::get('https://api.example.com/users')->json();
+// Quick one-off requests using Http facade
+$users = Http::get('https://api.example.com/users')->json();
 
 foreach ($users as $user) {
     echo $user['name'] . "\n";
@@ -461,6 +584,7 @@ class ApiClient
             $response = $this->client
                 ->withBaseUrl('https://api.example.com')
                 ->withToken($apiToken)
+                ->withUserAgent('MyApp/1.0')
                 ->withTimeout(30)
                 ->acceptJson()
                 ->get('/users', ['page' => $page]);
@@ -499,15 +623,14 @@ class ApiClient
 ### Example 3: Resilient API Client with Retries
 
 ```php
-use ElliePHP\Components\HttpClient\HttpClient;
+use ElliePHP\Components\HttpClient\Http;
 
-$client = new HttpClient();
-
-// Configure for resilient API calls
-$response = $client
-    ->withBaseUrl('https://api.example.com')
+// Configure for resilient API calls using Http facade
+$response = Http::withBaseUrl('https://api.example.com')
     ->withToken('your-api-token')
+    ->withUserAgent('MyApp/1.0')
     ->withTimeout(30)
+    ->withMaxRedirects(5)
     ->withRetry([
         'max_retries' => 3,
         'delay' => 1000,
@@ -531,7 +654,42 @@ if ($response->successful()) {
 }
 ```
 
+### Example 4: Using Convenience Methods
+
+```php
+use ElliePHP\Components\HttpClient\Http;
+
+// Chain convenience methods for clean, readable code
+$response = Http::withBaseUrl('https://api.example.com')
+    ->withUserAgent('MyApp/2.0')
+    ->withContentType('application/json')
+    ->withAccept('application/json')
+    ->withHeader('X-API-Version', 'v2')
+    ->withTimeout(30)
+    ->withMaxRedirects(3)
+    ->withToken('your-api-token')
+    ->get('/users');
+
+if ($response->successful()) {
+    $users = $response->json();
+    // Process users...
+}
+```
+
 ## API Reference
+
+### Http Facade
+
+The `Http` facade provides a static interface that delegates to `HttpClient`. All methods available on `HttpClient` are also available on `Http`.
+
+```php
+use ElliePHP\Components\HttpClient\Http;
+
+// All HttpClient methods work with Http facade
+Http::get('https://api.example.com/users');
+Http::withBaseUrl('https://api.example.com')->get('/users');
+Http::withToken('token')->get('/api/protected');
+```
 
 ### HttpClient
 
@@ -545,15 +703,22 @@ if ($response->successful()) {
 
 #### Configuration Methods
 
-- `withBaseUrl(string $baseUrl): ClientBuilder`
-- `withHeaders(array $headers): ClientBuilder`
-- `withToken(string $token): ClientBuilder`
-- `withBasicAuth(string $username, string $password): ClientBuilder`
-- `acceptJson(): ClientBuilder`
-- `asJson(): ClientBuilder`
-- `withTimeout(int $seconds): ClientBuilder`
-- `withRetry(array $retryConfig): ClientBuilder`
-- `withOptions(array $options): ClientBuilder`
+- `withBaseUrl(string $baseUrl): ClientBuilder` - Set base URL for requests
+- `withHeaders(array $headers): ClientBuilder` - Add multiple headers
+- `withHeader(string $name, string $value): ClientBuilder` - Set a single header
+- `withUserAgent(string $userAgent): ClientBuilder` - Set User-Agent header
+- `withContentType(string $contentType): ClientBuilder` - Set Content-Type header
+- `withAccept(string $accept): ClientBuilder` - Set Accept header
+- `withToken(string $token): ClientBuilder` - Set Bearer token authentication
+- `withBasicAuth(string $username, string $password): ClientBuilder` - Set Basic authentication
+- `acceptJson(): ClientBuilder` - Set Accept: application/json header
+- `asJson(): ClientBuilder` - Set Content-Type: application/json and enable JSON encoding
+- `withTimeout(int $seconds): ClientBuilder` - Set request timeout
+- `withMaxRedirects(int $maxRedirects): ClientBuilder` - Set maximum redirects to follow
+- `withVerify(bool $verify = true): ClientBuilder` - Enable/disable SSL verification
+- `withProxy(string $proxyUrl): ClientBuilder` - Configure proxy settings
+- `withRetry(array $retryConfig): ClientBuilder` - Configure retry behavior
+- `withOptions(array $options): ClientBuilder` - Set Symfony HttpClient options
 
 #### Request Methods
 
@@ -583,8 +748,11 @@ if ($response->successful()) {
 Custom exception thrown for network errors, timeouts, and transport failures.
 
 ```php
+use ElliePHP\Components\HttpClient\Http;
+use ElliePHP\Components\HttpClient\RequestException;
+
 try {
-    $response = HttpClient::get('https://api.example.com/data');
+    $response = Http::get('https://api.example.com/data');
 } catch (RequestException $e) {
     echo $e->getMessage();      // Error message
     echo $e->getCode();         // Error code

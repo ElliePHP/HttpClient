@@ -341,6 +341,248 @@ class HttpClient
     }
 
     /**
+     * Set the User-Agent header
+     * 
+     * Sets the User-Agent header for the request. Returns a ClientBuilder
+     * for further configuration and request execution.
+     * 
+     * Example:
+     * ```php
+     * $response = $client->withUserAgent('MyApp/1.0')
+     *                    ->get('https://api.example.com/data');
+     * ```
+     * 
+     * @param string $userAgent The User-Agent string
+     * @return ClientBuilder A builder instance for method chaining
+     */
+    public function withUserAgent(string $userAgent): ClientBuilder
+    {
+        $builder = new ClientBuilder($this->getClient());
+        
+        // Apply existing configuration
+        if ($this->baseUrl !== null) {
+            $builder->withBaseUrl($this->baseUrl);
+        }
+        if (!empty($this->headers)) {
+            $builder->withHeaders($this->headers);
+        }
+        if (!empty($this->options)) {
+            $builder->withOptions($this->options);
+        }
+        
+        $builder->withUserAgent($userAgent);
+        return $builder;
+    }
+
+    /**
+     * Set the Content-Type header
+     * 
+     * Sets the Content-Type header for the request. Returns a ClientBuilder
+     * for further configuration and request execution.
+     * 
+     * Example:
+     * ```php
+     * $response = $client->withContentType('application/xml')
+     *                    ->post('/api/data', $xmlData);
+     * ```
+     * 
+     * @param string $contentType The Content-Type value
+     * @return ClientBuilder A builder instance for method chaining
+     */
+    public function withContentType(string $contentType): ClientBuilder
+    {
+        $builder = new ClientBuilder($this->getClient());
+        
+        // Apply existing configuration
+        if ($this->baseUrl !== null) {
+            $builder->withBaseUrl($this->baseUrl);
+        }
+        if (!empty($this->headers)) {
+            $builder->withHeaders($this->headers);
+        }
+        if (!empty($this->options)) {
+            $builder->withOptions($this->options);
+        }
+        
+        $builder->withContentType($contentType);
+        return $builder;
+    }
+
+    /**
+     * Set the Accept header
+     * 
+     * Sets the Accept header to specify the media types that are acceptable
+     * for the response. Returns a ClientBuilder for further configuration
+     * and request execution.
+     * 
+     * Example:
+     * ```php
+     * $response = $client->withAccept('application/xml')
+     *                    ->get('/api/data');
+     * ```
+     * 
+     * @param string $accept The Accept header value
+     * @return ClientBuilder A builder instance for method chaining
+     */
+    public function withAccept(string $accept): ClientBuilder
+    {
+        $builder = new ClientBuilder($this->getClient());
+        
+        // Apply existing configuration
+        if ($this->baseUrl !== null) {
+            $builder->withBaseUrl($this->baseUrl);
+        }
+        if (!empty($this->headers)) {
+            $builder->withHeaders($this->headers);
+        }
+        if (!empty($this->options)) {
+            $builder->withOptions($this->options);
+        }
+        
+        $builder->withAccept($accept);
+        return $builder;
+    }
+
+    /**
+     * Set a single header
+     * 
+     * Sets a single header by name and value. Returns a ClientBuilder
+     * for further configuration and request execution.
+     * 
+     * Example:
+     * ```php
+     * $response = $client->withHeader('X-Custom-Header', 'value')
+     *                    ->get('/api/data');
+     * ```
+     * 
+     * @param string $name The header name
+     * @param string $value The header value
+     * @return ClientBuilder A builder instance for method chaining
+     */
+    public function withHeader(string $name, string $value): ClientBuilder
+    {
+        $builder = new ClientBuilder($this->getClient());
+        
+        // Apply existing configuration
+        if ($this->baseUrl !== null) {
+            $builder->withBaseUrl($this->baseUrl);
+        }
+        if (!empty($this->headers)) {
+            $builder->withHeaders($this->headers);
+        }
+        if (!empty($this->options)) {
+            $builder->withOptions($this->options);
+        }
+        
+        $builder->withHeader($name, $value);
+        return $builder;
+    }
+
+    /**
+     * Set the maximum number of redirects to follow
+     * 
+     * Configures the maximum number of redirects that will be followed
+     * before throwing an exception. Returns a ClientBuilder for further
+     * configuration and request execution.
+     * 
+     * Example:
+     * ```php
+     * $response = $client->withMaxRedirects(5)
+     *                    ->get('/api/data');
+     * ```
+     * 
+     * @param int $maxRedirects Maximum number of redirects (0 to disable)
+     * @return ClientBuilder A builder instance for method chaining
+     */
+    public function withMaxRedirects(int $maxRedirects): ClientBuilder
+    {
+        $builder = new ClientBuilder($this->getClient());
+        
+        // Apply existing configuration
+        if ($this->baseUrl !== null) {
+            $builder->withBaseUrl($this->baseUrl);
+        }
+        if (!empty($this->headers)) {
+            $builder->withHeaders($this->headers);
+        }
+        if (!empty($this->options)) {
+            $builder->withOptions($this->options);
+        }
+        
+        $builder->withMaxRedirects($maxRedirects);
+        return $builder;
+    }
+
+    /**
+     * Enable or disable SSL certificate verification
+     * 
+     * Controls whether SSL certificates should be verified. Disabling
+     * verification is not recommended for production use. Returns a
+     * ClientBuilder for further configuration and request execution.
+     * 
+     * Example:
+     * ```php
+     * $response = $client->withVerify(false)
+     *                    ->get('https://self-signed-cert.example.com');
+     * ```
+     * 
+     * @param bool $verify Whether to verify SSL certificates (default: true)
+     * @return ClientBuilder A builder instance for method chaining
+     */
+    public function withVerify(bool $verify = true): ClientBuilder
+    {
+        $builder = new ClientBuilder($this->getClient());
+        
+        // Apply existing configuration
+        if ($this->baseUrl !== null) {
+            $builder->withBaseUrl($this->baseUrl);
+        }
+        if (!empty($this->headers)) {
+            $builder->withHeaders($this->headers);
+        }
+        if (!empty($this->options)) {
+            $builder->withOptions($this->options);
+        }
+        
+        $builder->withVerify($verify);
+        return $builder;
+    }
+
+    /**
+     * Configure proxy settings
+     * 
+     * Sets the proxy URL for requests. Returns a ClientBuilder for
+     * further configuration and request execution.
+     * 
+     * Example:
+     * ```php
+     * $response = $client->withProxy('http://proxy.example.com:8080')
+     *                    ->get('https://api.example.com/data');
+     * ```
+     * 
+     * @param string $proxyUrl The proxy URL (e.g., 'http://proxy.example.com:8080')
+     * @return ClientBuilder A builder instance for method chaining
+     */
+    public function withProxy(string $proxyUrl): ClientBuilder
+    {
+        $builder = new ClientBuilder($this->getClient());
+        
+        // Apply existing configuration
+        if ($this->baseUrl !== null) {
+            $builder->withBaseUrl($this->baseUrl);
+        }
+        if (!empty($this->headers)) {
+            $builder->withHeaders($this->headers);
+        }
+        if (!empty($this->options)) {
+            $builder->withOptions($this->options);
+        }
+        
+        $builder->withProxy($proxyUrl);
+        return $builder;
+    }
+
+    /**
      * Set additional Symfony HttpClient options
      * 
      * Allows passing any Symfony HttpClient options directly for advanced
