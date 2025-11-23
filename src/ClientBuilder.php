@@ -462,14 +462,83 @@ class ClientBuilder
     }
 
     /**
+     * Attach a file to the request
+     * 
+     * Attaches a file to be uploaded with the request. The file will be sent
+     * as multipart/form-data. You can attach multiple files by calling this
+     * method multiple times or by passing multiple files in the data array.
+     * 
+     * The file can be provided as:
+     * - A file path (string): The file at the given path will be opened
+     * - A file resource: An already opened file resource
+     * 
+     * Example:
+     * ```php
+     * // Attach a single file
+     * $response = $builder->attach('file', '/path/to/file.jpg')
+     *     ->post('/upload');
+     * 
+     * // Attach multiple files
+     * $response = $builder->attach('avatar', '/path/to/avatar.jpg')
+     *     ->attach('document', '/path/to/document.pdf')
+     *     ->post('/upload');
+     * 
+     * // Attach file with other form data
+     * $response = $builder->post('/upload', [
+     *     'name' => 'John',
+     *     'file' => fopen('/path/to/file.jpg', 'r')
+     * ]);
+     * ```
+     * 
+     * @param string $name The form field name for the file
+     * @param string|resource $file The file path or file resource to upload
+     * @return self Returns this builder for method chaining
+     * @throws \InvalidArgumentException If the file path doesn't exist or resource is invalid
+     */
+    public function attach(string $name, mixed $file): self
+    {
+        // If it's a string path, open it as a resource
+        if (is_string($file)) {
+            if (!file_exists($file)) {
+                throw new \InvalidArgumentException("File not found: {$file}");
+            }
+            if (!is_readable($file)) {
+                throw new \InvalidArgumentException("File is not readable: {$file}");
+            }
+            $file = fopen($file, 'r');
+        }
+        
+        // Validate it's a resource
+        if (!is_resource($file)) {
+            throw new \InvalidArgumentException("File must be a file path (string) or file resource");
+        }
+        
+        // Store attached files to be merged with body data during request
+        if (!isset($this->options['_attached_files'])) {
+            $this->options['_attached_files'] = [];
+        }
+        
+        $this->options['_attached_files'][$name] = $file;
+        
+        return $this;
+    }
+
+    /**
      * Send a POST request with the configured settings
      * 
      * Sends an HTTP POST request with the provided data. If asJson() was called,
      * the data will be automatically JSON-encoded. Otherwise, it's sent as form data.
      * 
+     * If files have been attached using attach(), they will be included in the request
+     * as multipart/form-data. You can also pass file resources directly in the data array.
+     * 
      * Example:
      * ```php
      * $response = $builder->asJson()->post('/users', ['name' => 'John', 'email' => 'john@example.com']);
+     * 
+     * // With file upload
+     * $response = $builder->attach('file', '/path/to/file.jpg')
+     *     ->post('/upload', ['description' => 'My file']);
      * ```
      * 
      * @param string $url The URL or path to request
@@ -479,6 +548,12 @@ class ClientBuilder
      */
     public function post(string $url, array $data = []): Response
     {
+        // Merge attached files with data
+        if (isset($this->options['_attached_files'])) {
+            $data = array_merge($data, $this->options['_attached_files']);
+            unset($this->options['_attached_files']);
+        }
+        
         return $this->request('POST', $url, ['body' => $data]);
     }
 
@@ -487,6 +562,9 @@ class ClientBuilder
      * 
      * Sends an HTTP PUT request with the provided data. If asJson() was called,
      * the data will be automatically JSON-encoded. Otherwise, it's sent as form data.
+     * 
+     * If files have been attached using attach(), they will be included in the request
+     * as multipart/form-data.
      * 
      * Example:
      * ```php
@@ -500,6 +578,12 @@ class ClientBuilder
      */
     public function put(string $url, array $data = []): Response
     {
+        // Merge attached files with data
+        if (isset($this->options['_attached_files'])) {
+            $data = array_merge($data, $this->options['_attached_files']);
+            unset($this->options['_attached_files']);
+        }
+        
         return $this->request('PUT', $url, ['body' => $data]);
     }
 
@@ -508,6 +592,9 @@ class ClientBuilder
      * 
      * Sends an HTTP PATCH request with the provided data. If asJson() was called,
      * the data will be automatically JSON-encoded. Otherwise, it's sent as form data.
+     * 
+     * If files have been attached using attach(), they will be included in the request
+     * as multipart/form-data.
      * 
      * Example:
      * ```php
@@ -521,6 +608,12 @@ class ClientBuilder
      */
     public function patch(string $url, array $data = []): Response
     {
+        // Merge attached files with data
+        if (isset($this->options['_attached_files'])) {
+            $data = array_merge($data, $this->options['_attached_files']);
+            unset($this->options['_attached_files']);
+        }
+        
         return $this->request('PATCH', $url, ['body' => $data]);
     }
 

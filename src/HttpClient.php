@@ -583,6 +583,52 @@ class HttpClient
     }
 
     /**
+     * Attach a file to the request
+     * 
+     * Attaches a file to be uploaded with the request. The file will be sent
+     * as multipart/form-data. You can attach multiple files by calling this
+     * method multiple times.
+     * 
+     * The file can be provided as:
+     * - A file path (string): The file at the given path will be opened
+     * - A file resource: An already opened file resource
+     * 
+     * Example:
+     * ```php
+     * // Attach a single file
+     * $response = $client->attach('file', '/path/to/file.jpg')
+     *     ->post('/upload');
+     * 
+     * // Attach multiple files
+     * $response = $client->attach('avatar', '/path/to/avatar.jpg')
+     *     ->attach('document', '/path/to/document.pdf')
+     *     ->post('/upload');
+     * ```
+     * 
+     * @param string $name The form field name for the file
+     * @param string|resource $file The file path or file resource to upload
+     * @return ClientBuilder A builder instance for method chaining
+     */
+    public function attach(string $name, mixed $file): ClientBuilder
+    {
+        $builder = new ClientBuilder($this->getClient());
+        
+        // Apply existing configuration
+        if ($this->baseUrl !== null) {
+            $builder->withBaseUrl($this->baseUrl);
+        }
+        if (!empty($this->headers)) {
+            $builder->withHeaders($this->headers);
+        }
+        if (!empty($this->options)) {
+            $builder->withOptions($this->options);
+        }
+        
+        $builder->attach($name, $file);
+        return $builder;
+    }
+
+    /**
      * Set additional Symfony HttpClient options
      * 
      * Allows passing any Symfony HttpClient options directly for advanced

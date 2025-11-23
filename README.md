@@ -161,6 +161,93 @@ use ElliePHP\Components\HttpClient\Http;
 $response = Http::delete('https://api.example.com/users/123');
 ```
 
+#### File Uploads
+
+The HTTP client supports file uploads using the `attach()` method. Files are automatically sent as `multipart/form-data`.
+
+**Upload a single file:**
+
+```php
+use ElliePHP\Components\HttpClient\Http;
+
+// Upload a file by path
+$response = Http::attach('file', '/path/to/image.jpg')
+    ->post('https://api.example.com/upload');
+
+// Upload with additional form data
+$response = Http::attach('file', '/path/to/image.jpg')
+    ->post('https://api.example.com/upload', [
+        'description' => 'My uploaded image',
+        'category' => 'photos'
+    ]);
+```
+
+**Upload multiple files:**
+
+```php
+// Attach multiple files
+$response = Http::attach('avatar', '/path/to/avatar.jpg')
+    ->attach('document', '/path/to/document.pdf')
+    ->post('https://api.example.com/upload', [
+        'user_id' => 123
+    ]);
+```
+
+**Upload using file resource:**
+
+```php
+// Open file and upload
+$file = fopen('/path/to/file.jpg', 'r');
+$response = Http::attach('file', $file)
+    ->post('https://api.example.com/upload');
+
+// Don't forget to close the file if you opened it manually
+fclose($file);
+```
+
+**Upload with file resource in data array:**
+
+```php
+// You can also pass file resources directly in the data array
+$response = Http::post('https://api.example.com/upload', [
+    'name' => 'John',
+    'file' => fopen('/path/to/file.jpg', 'r')
+]);
+```
+
+**Upload with authentication and configuration:**
+
+```php
+$response = Http::withBaseUrl('https://api.example.com')
+    ->withToken('your-api-token')
+    ->withUserAgent('MyApp/1.0')
+    ->attach('file', '/path/to/file.jpg')
+    ->post('/upload', [
+        'description' => 'Uploaded file'
+    ]);
+```
+
+**Error Handling:**
+
+The `attach()` method will throw an `InvalidArgumentException` if:
+- The file path doesn't exist
+- The file is not readable
+- The provided value is not a file path or resource
+
+```php
+use ElliePHP\Components\HttpClient\Http;
+use InvalidArgumentException;
+
+try {
+    $response = Http::attach('file', '/nonexistent/file.jpg')
+        ->post('https://api.example.com/upload');
+} catch (InvalidArgumentException $e) {
+    echo "File error: " . $e->getMessage();
+}
+```
+
+**Note:** File uploads work with POST, PUT, and PATCH requests. When files are attached, the request is automatically sent as `multipart/form-data`, even if `asJson()` was called earlier.
+
 ### Authentication
 
 #### Bearer Token Authentication
@@ -676,6 +763,45 @@ if ($response->successful()) {
 }
 ```
 
+### Example 5: File Upload
+
+```php
+use ElliePHP\Components\HttpClient\Http;
+use ElliePHP\Components\HttpClient\RequestException;
+use InvalidArgumentException;
+
+try {
+    // Upload a single file with metadata
+    $response = Http::withBaseUrl('https://api.example.com')
+        ->withToken('your-api-token')
+        ->withUserAgent('MyApp/1.0')
+        ->attach('file', '/path/to/document.pdf')
+        ->post('/upload', [
+            'title' => 'Important Document',
+            'category' => 'legal'
+        ]);
+    
+    if ($response->successful()) {
+        $result = $response->json();
+        echo "File uploaded: " . $result['file_id'];
+    }
+    
+    // Upload multiple files
+    $response = Http::withBaseUrl('https://api.example.com')
+        ->withToken('your-api-token')
+        ->attach('avatar', '/path/to/avatar.jpg')
+        ->attach('cover', '/path/to/cover.jpg')
+        ->post('/upload', [
+            'user_id' => 123
+        ]);
+    
+} catch (InvalidArgumentException $e) {
+    echo "File error: " . $e->getMessage();
+} catch (RequestException $e) {
+    echo "Upload failed: " . $e->getMessage();
+}
+```
+
 ## API Reference
 
 ### Http Facade
@@ -719,6 +845,7 @@ Http::withToken('token')->get('/api/protected');
 - `withProxy(string $proxyUrl): ClientBuilder` - Configure proxy settings
 - `withRetry(array $retryConfig): ClientBuilder` - Configure retry behavior
 - `withOptions(array $options): ClientBuilder` - Set Symfony HttpClient options
+- `attach(string $name, string|resource $file): ClientBuilder` - Attach a file to upload with the request
 
 #### Request Methods
 

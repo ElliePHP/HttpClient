@@ -38,6 +38,7 @@ namespace ElliePHP\Components\HttpClient;
  * @method static ClientBuilder withProxy(string $proxyUrl) Configure proxy settings
  * @method static ClientBuilder withRetry(array $retryConfig) Configure retry behavior for failed requests
  * @method static ClientBuilder withOptions(array $options) Set additional Symfony HttpClient options
+ * @method static ClientBuilder attach(string $name, mixed $file) Attach a file to upload with the request (file path or resource)
  */
 class Http
 {
