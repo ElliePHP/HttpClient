@@ -507,6 +507,10 @@ For all available options, see the [Symfony HttpClient documentation](https://sy
 
 #### Check Response Status
 
+The Response class provides many convenience methods for checking HTTP status codes:
+
+**General Status Checks:**
+
 ```php
 use ElliePHP\Components\HttpClient\Http;
 
@@ -517,13 +521,119 @@ if ($response->successful()) {
     echo "Request succeeded!";
 }
 
+// Alias for successful() - shorter syntax
+if ($response->success()) {
+    $data = $response->json();
+}
+
 // Check if failed (4xx or 5xx status)
 if ($response->failed()) {
     echo "Request failed!";
 }
 
+// Check if error (alias for failed())
+if ($response->isError()) {
+    echo "Request has error!";
+}
+
 // Get status code
 $status = $response->status(); // e.g., 200, 404, 500
+```
+
+**Error Type Checks:**
+
+```php
+// Check for client errors (4xx)
+if ($response->isClientError()) {
+    echo "Client error: " . $response->status();
+}
+
+// Check for server errors (5xx)
+if ($response->isServerError()) {
+    echo "Server error: " . $response->status();
+}
+
+// Check for redirects (3xx)
+if ($response->isRedirect()) {
+    echo "Redirect to: " . $response->header('Location');
+}
+```
+
+**Specific Status Code Checks:**
+
+```php
+// Success codes
+$response->isOk();                    // 200 OK
+$response->isCreated();               // 201 Created
+$response->isNoContent();             // 204 No Content
+
+// Client error codes
+$response->isBadRequest();            // 400 Bad Request
+$response->isUnauthorized();          // 401 Unauthorized
+$response->isForbidden();             // 403 Forbidden
+$response->isNotFound();              // 404 Not Found
+$response->isUnprocessableEntity();   // 422 Unprocessable Entity
+$response->isTooManyRequests();       // 429 Too Many Requests
+
+// Server error codes
+$response->isInternalServerError();   // 500 Internal Server Error
+```
+
+**Example Usage:**
+
+```php
+$response = Http::get('https://api.example.com/users/123');
+
+if ($response->isNotFound()) {
+    echo "User not found!";
+} elseif ($response->isUnauthorized()) {
+    echo "Authentication required!";
+} elseif ($response->isServerError()) {
+    echo "Server error occurred!";
+} elseif ($response->success()) {
+    $user = $response->json();
+    echo "User: " . $user['name'];
+}
+```
+
+**Throw on Failure:**
+
+You can throw an exception automatically if the response failed:
+
+```php
+use ElliePHP\Components\HttpClient\Http;
+use ElliePHP\Components\HttpClient\RequestException;
+
+try {
+    // This will throw RequestException if response is 4xx or 5xx
+    $response = Http::get('https://api.example.com/users')
+        ->throw();
+    
+    $data = $response->json();
+} catch (RequestException $e) {
+    echo "Request failed: " . $e->getMessage();
+}
+```
+
+**Get JSON or Throw:**
+
+For convenience, you can get JSON directly and throw if failed:
+
+```php
+use ElliePHP\Components\HttpClient\Http;
+use ElliePHP\Components\HttpClient\RequestException;
+
+try {
+    // This will throw RequestException if response is not successful
+    $data = Http::get('https://api.example.com/users')
+        ->jsonOrFail();
+    
+    // Or get a specific key
+    $name = Http::get('https://api.example.com/users/123')
+        ->jsonOrFail('name');
+} catch (RequestException $e) {
+    echo "Request failed: " . $e->getMessage();
+}
 ```
 
 #### Access Response Data
@@ -859,9 +969,31 @@ Http::withToken('token')->get('/api/protected');
 
 #### Status Methods
 
+**General Status Checks:**
 - `status(): int` - Get HTTP status code
 - `successful(): bool` - Check if status is 2xx
+- `success(): bool` - Alias for successful() - Check if status is 2xx
 - `failed(): bool` - Check if status is 4xx or 5xx
+- `isError(): bool` - Check if status is 4xx or 5xx (alias for failed())
+- `throw(): self` - Throw RequestException if response failed, returns self for chaining
+- `jsonOrFail(?string $key = null): mixed` - Get JSON response or throw if failed
+
+**Error Type Checks:**
+- `isClientError(): bool` - Check if status is 4xx
+- `isServerError(): bool` - Check if status is 5xx
+- `isRedirect(): bool` - Check if status is 3xx
+
+**Specific Status Code Checks:**
+- `isOk(): bool` - Check if status is 200
+- `isCreated(): bool` - Check if status is 201
+- `isNoContent(): bool` - Check if status is 204
+- `isBadRequest(): bool` - Check if status is 400
+- `isUnauthorized(): bool` - Check if status is 401
+- `isForbidden(): bool` - Check if status is 403
+- `isNotFound(): bool` - Check if status is 404
+- `isUnprocessableEntity(): bool` - Check if status is 422
+- `isTooManyRequests(): bool` - Check if status is 429
+- `isInternalServerError(): bool` - Check if status is 500
 
 #### Content Methods
 
