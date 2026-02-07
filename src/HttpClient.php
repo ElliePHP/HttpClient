@@ -789,6 +789,23 @@ class HttpClient
         return $this->request('DELETE', $url);
     }
 
+
+
+    /**
+     * Ping a URL to check its status
+     *
+     * Uses a HEAD request to check availability without downloading content.
+     * Overrides the default timeout to fail fast.
+     *
+     * @param string $url The URL to ping
+     * @param int $timeout Seconds to wait (default: 1)
+     * @return Response
+     */
+    public function ping(string $url, int $timeout = 1): Response
+    {
+        return $this->request('HEAD', $url, ['timeout' => $timeout]);
+    }
+
     /**
      * Send an HTTP request
      * 
