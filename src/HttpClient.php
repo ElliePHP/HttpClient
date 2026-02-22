@@ -59,13 +59,7 @@ class HttpClient
      */
     private function getClient(): HttpClientInterface
     {
-        return $this->client ?? SymfonyHttpClient::create(
-            [
-                'headers' => [
-                    'User-Agent' => 'Mozilla/5.0 (compatible; ElliePHP-HttpClient/1.0; +https://github.com/ElliePHP/HttpClient)',
-                ],
-            ]
-        );
+        return $this->client ?? SymfonyHttpClient::create();
     }
 
     /**
